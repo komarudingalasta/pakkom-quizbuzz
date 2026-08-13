@@ -1,12 +1,29 @@
 # PAKKOM-QUIZBUZZ
 
-GitHub Pages + Supabase Realtime.
+## 1. Supabase
+Buka Supabase → SQL Editor → New query.
+Salin seluruh isi `supabase.sql`, lalu klik **Run**.
 
-## Upload
-Upload `index.html`, `style.css`, dan `app.js` ke repository GitHub lalu aktifkan:
-Settings → Pages → Deploy from branch → main → root.
+## 2. GitHub
+Upload:
+- index.html
+- style.css
+- app.js
 
-## Penting
-Versi ini menggunakan Supabase Realtime Broadcast. Agar daftar peserta dan kontrol pembuat berjalan sempurna, mekanisme sinkronisasi room sebaiknya memakai database Supabase sebagai sumber kebenaran. Broadcast saja tidak menyimpan state untuk peserta yang masuk terlambat.
+Aktifkan GitHub Pages:
+Settings → Pages → Deploy from branch → main → /(root).
 
-Publishable key boleh berada di frontend. Jangan pernah memasukkan secret/service_role key ke repository.
+## 3. Uji
+Buka URL GitHub Pages di HP/laptop pembuat.
+- Buat permainan.
+- Catat kode 6 karakter.
+- Buka URL yang sama pada HP peserta.
+- Masukkan kode dan nama tim.
+- Pembuat buka BEL.
+- Peserta menekan BEL.
+- Pembuat memilih BENAR/SALAH.
+
+## Catatan keamanan
+Publishable key ada di app.js dan boleh digunakan pada frontend. Jangan pernah menaruh service_role/secret key di GitHub.
+
+Versi ini menggunakan database Supabase + Postgres Realtime. Kebijakan anon pada SQL dibuat longgar agar prototipe dapat langsung diuji. Untuk pemakaian kompetisi publik, sebaiknya ditambah autentikasi dan validasi server/RPC agar peserta tidak dapat mengubah skor secara manual.
