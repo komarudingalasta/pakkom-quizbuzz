@@ -43,7 +43,7 @@ function subscribe(){
 }
 function home(){
  role=null;room=null;teamId=null;roomData=null;teams=[];rounds=[];
- app.innerHTML=`<div class="wrap"><section class="card hero"><div class="mark">PB</div><h1>PAKKOM-QUIZBUZZ</h1><p>Bel cerdas cermat real-time dengan skor dan babak.</p><div class="buttons"><button id="make">Buat Permainan</button><button id="join" class="secondary">Gabung Permainan</button></div></section><section class="card"><div class="grid"><div><b>⚡ Bel cepat</b><p class="muted small">Peserta pertama langsung terkunci.</p></div><div><b>🎵 Suara unik</b><p class="muted small">Hingga 16 pilihan suara tim.</p></div><div><b>🏆 Babak & skor</b><p class="muted small">Skor lama tetap tersimpan.</p></div></div></section></div>`;
+ app.innerHTML=`<div class="wrap"><section class="card hero"><div class="mark">PB</div><h1>PAKKOM-QUIZBUZZ</h1><p>Bel cerdas cermat real-time dengan skor dan babak.</p><div class="buttons"><button id="make">Buat Permainan</button><button id="join" class="secondary">Gabung Permainan</button></div></section><section class="card"><div class="grid"><div><b>⚡ Bel cepat</b><p class="muted small">Peserta pertama langsung terkunci.</p></div><div><b>🎵 Suara unik</b><p class="muted small">Hingga 7 pilihan suara tim.</p></div><div><b>🏆 Babak & skor</b><p class="muted small">Skor lama tetap tersimpan.</p></div></div></section></div>`;
  $("#make").onclick=makePage;$("#join").onclick=joinPage;
 }
 function makePage(){
