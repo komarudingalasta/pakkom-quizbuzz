@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PAKKOM-QUIZBUZZ</title>
+<style>
+:root{--bg:#070b17;--card:#10182a;--line:#263653;--text:#f8fafc;--muted:#94a3b8;--blue:#536dfe;--green:#16a34a;--red:#dc2626;--gold:#f59e0b}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 15% 0,#1e2a64 0,#070b17 43%)}
+.wrap{max-width:1000px;margin:auto;padding:16px}.brand{font-size:25px;font-weight:950;letter-spacing:-1px}.brand b{color:#8296ff}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.card{background:linear-gradient(180deg,#121c31,#0e1526);border:1px solid var(--line);border-radius:22px;padding:20px;margin:13px 0;box-shadow:0 15px 45px #0006}
+.hero{text-align:center;padding:48px 20px}.hero h1{font-size:clamp(38px,8vw,70px);letter-spacing:-4px;margin:0 0 8px}.hero p,.muted{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+button,input{font:inherit;border-radius:13px;padding:13px;border:1px solid var(--line)}input{width:100%;background:#080e1c;color:white}button{border:0;color:white;font-weight:850;background:linear-gradient(135deg,#536dfe,#6c4df5);cursor:pointer}button.secondary{background:#1b2840}button.good{background:linear-gradient(135deg,#15803d,#22c55e)}button.bad{background:linear-gradient(135deg,#b91c1c,#ef4444)}button.gold{background:linear-gradient(135deg,#d97706,#f59e0b);color:#111827}
+button:disabled{opacity:.35;cursor:not-allowed}.code{text-align:center;font-size:clamp(34px,9vw,58px);font-weight:950;letter-spacing:8px;padding:15px;background:#060b16;border:1px dashed #52688e;border-radius:16px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.pill{padding:6px 10px;border-radius:99px;background:#1b2840;color:#cbd5e1;font-size:12px;font-weight:800}.team{padding:15px;border-radius:17px;background:#080f1e;border:1px solid #21304b;margin:9px 0}.winner{border-color:var(--gold);box-shadow:0 0 0 2px #f59e0b22}.score{font-size:29px;font-weight:950}.rank{width:32px;height:32px;border-radius:9px;background:#1c2943;display:grid;place-items:center;font-weight:900}.buzz{width:min(400px,90vw);aspect-ratio:1;border-radius:50%;font-size:45px;background:radial-gradient(circle at 32% 22%,#9baaff,#4f46e5 50%,#24205e);border:10px solid #1d2946;box-shadow:0 20px 60px #4f46e566}.status{padding:18px;border-radius:17px;text-align:center;background:#172554;border:1px solid #3653a4}.win{background:#3c2b08;border-color:#a16c10}.action{display:grid;grid-template-columns:1fr 1fr;gap:10px}.action button{padding:18px}.center{text-align:center}.small{font-size:13px}.error{background:#3f0b0b;border:1px solid #7f1d1d;padding:12px;border-radius:13px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}.hero{padding:32px 14px}.card{padding:16px}.buzz{font-size:38px}}
+</style></head>
+<body><div class="wrap"><div class="top"><div class="brand">PAKKOM-<b>QUIZBUZZ</b></div><span class="pill" id="conn">OFFLINE</span></div><div id="app"></div></div>
+<script>
+/*
+Real-time architecture:
+- This client is ready for a WebSocket backend.
+- Set WS_URL below to your deployed server URL.
+- Message format is documented in README.md.
+*/
+const WS_URL = ""; // contoh: wss://server-anda.example/ws
+let ws=null, room=null, role=null, myTeam=null, state=null;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+function rid(){return Math.random().toString(36).slice(2,8).toUpperCase()}
+function setConn(t){$("conn").textContent=t}
+function send(type,payload={}){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type,...payload}))}
+function connect(onopen){
+ if(!WS_URL){onopen?.();return}
+ ws=new WebSocket(WS_URL);
+ ws.onopen=()=>{setConn("ONLINE");onopen?.()}
+ ws.onclose=()=>{setConn("OFFLINE")}
+ ws.onerror=()=>{setConn("ERRO")}
+ ws.onmessage=e=>{let m=JSON.parse(e.data); if(m.type==="STATE"){state=m.state;render()} if(m.type==="ERROR")alert(m.message)}
+}
+function home(){
+ role=null;room=null;myTeam=null;state=null;
+ $("app").innerHTML=`<section class="card hero"><h1>PAKKOM-QUIZBUZZ</h1><p>Bel cerdas cermat real-time dengan skor otomatis.</p><div class="grid"><button onclick="createPage()">＋ Buat Permainan</button><button class="secondary" onclick="joinPage()">Gabung Permainan</button></div></section><section class="card small"><b>Real-time:</b> pembuat dan peserta memakai kode room yang sama. Hubungkan ke server WebSocket agar semua perangkat tersinkron.</section>`;
+}
+function createPage(){$("app").innerHTML=`<section class="card"><h2>Buat Permainan</h2><div class="grid"><label>Jumlah maksimal tim<input id="max" type="number" min="2" max="100" value="5"></label><label>Benar (+)<input id="correct" type="number" value="10"></label><label>Salah (-)<input id="wrong" type="number" value="5"></label></div><br><button onclick="createRoom()">Buat Room</button> <button class="secondary" onclick="home()">Kembali</button></section>`}
+function createRoom(){
+ role="host";room=rid();state={code:room,max:+$("max").value||5,correct:+$("correct").value||10,wrong:+$("wrong").value||5,teams:[],winner:null,open:false};
+ connect(()=>{send("CREATE",{room,state}); if(!WS_URL){render()}});
+}
+function joinPage(){$("app").innerHTML=`<section class="card"><h2>Gabung Permainan</h2><input id="code" maxlength="8" placeholder="KODE ROOM" style="text-transform:uppercase"><br><br><button onclick="joinRoom()">Lanjut</button> <button class="secondary" onclick="home()">Kembali</button></section>`}
+function joinRoom(){room=$("code").value.trim().toUpperCase();if(!room)return;role="player";connect(()=>{send("JOIN_ROOM",{room})});if(!WS_URL){alert("Server real-time belum dihubungkan. Isi WS_URL pada aplikasi dengan alamat WebSocket.");return} $("app").innerHTML=`<section class="card"><h2>Memuat room...</h2></section>`}
+function chooseTeam(){let full=state.teams.length>=state.max;$("app").innerHTML=`<section class="card"><h2>${full?"Room Penuh":"Masuk sebagai Tim"}</h2>${full?`<div class="error">Semua ${state.max} slot sudah terisi.</div>`:`<input id="team" maxlength="25" placeholder="Nama tim"><br><br><button onclick="joinTeam()">Masuk</button>`}</section>`}
+function joinTeam(){let name=$("team").value.trim();if(!name)return;myTeam=rid();send("JOIN_TEAM",{room,team:{id:myTeam,name,score:0}});if(!WS_URL){state.teams.push({id:myTeam,name,score:0});render()}}
+function host(){
+let w=state.teams.find(t=>t.id===state.winner);
+$("app").innerHTML=`<section class="card"><div class="row"><div><h2>Ruang Pembuat</h2><span class="pill">${state.teams.length}/${state.max} tim</span></div><button class="secondary" onclick="home()">Keluar</button></div><div class="code">${esc(state.code)}</div><p class="center muted">Bagikan kode kepada peserta.</p></section>
+<section class="card"><h2>Papan Skor</h2>${board()}</section>
+<section class="card"><h2>Kontrol Bel</h2>${w?`<div class="status win"><div class="small">BEL DITEKAN OLEH</div><h2>${esc(w.name)}</h2><b>${w.time||"-"} ms</b></div><br><div class="action"><button class="good" onclick="result(true)">✓ BENAR +${state.correct}</button><button class="bad" onclick="result(false)">✕ SALAH -${state.wrong}</button></div>`:`<div class="status"><h2>${state.open?"BEL SIAP":"BEL DITUTUP"}</h2><p>${state.open?"Semua tim boleh menekan bel.":"Buka bel untuk ronde berikutnya."}</p></div><br><button onclick="openBell()">Buka Bel</button>`}</section>`;
+}
+function board(){return state.teams.length?state.teams.slice().sort((a,b)=>b.score-a.score).map((t,i)=>`<div class="team ${t.id===state.winner?'winner':''}"><div class="row"><div class="row"><div class="rank">${i+1}</div><b>${esc(t.name)}</b></div><span class="score">${t.score}</span></div></div>`).join(""):`<p class="muted">Belum ada tim.</p>`}
+function openBell(){send("OPEN_BELL",{room});if(!WS_URL){state.open=true;state.winner=null;render()}}
+function result(ok){send("RESULT",{room,correct:ok});if(!WS_URL){let t=state.teams.find(t=>t.id===state.winner);if(t)t.score+=ok?state.correct:-state.wrong;state.winner=null;state.open=false;render()}}
+function player(){
+let t=state.teams.find(x=>x.id===myTeam),w=state.teams.find(x=>x.id===state.winner);
+if(!t)return chooseTeam();
+$("app").innerHTML=`<section class="card center"><span class="pill">ROOM ${state.code}</span><h1>${esc(t.name)}</h1><div class="score">${t.score} poin</div></section><section class="card center">${w?`<div class="status ${w.id===myTeam?'win':''}"><div>${w.id===myTeam?"KAMU MENEKAN BEL!":"BEL SUDAH DIKUNCI"}</div><h2>${esc(w.name)}</h2><p>Tunggu keputusan pembuat.</p></div>`:state.open?`<p class="muted">Tekan bel saat siap.</p><button class="buzz" onclick="buzz()">BEL</button>`:`<div class="status"><h2>MENUNGGU</h2><p>Belum dibuka oleh pembuat.</p></div>`}</section><section class="card"><h2>Papan Skor</h2>${board()}</section>`;
+}
+function buzz(){if(!state.open||state.winner)return;send("BUZZ",{room,teamId:myTeam});if(!WS_URL){state.winner=myTeam;state.teams.find(t=>t.id===myTeam).time=Math.floor(Math.random()*500)+100;render()}}
+function render(){if(!state){home();return}if(role==="host")host();else if(role==="player")player()}
+home();
+</script></body></html>
