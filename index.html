@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PAKKOM-QUIZBUZZ — Cerdas Cermat</title>
+<style>
+:root{--bg:#080d1c;--card:#111a2e;--line:#263554;--text:#f8fafc;--muted:#94a3b8;--blue:#4f7cff;--green:#22c55e;--red:#ef4444;--gold:#f59e0b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0%,#172554 0,#080d1c 42%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+.wrap{max-width:980px;margin:auto;padding:20px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+.brand{font-weight:900;font-size:24px;letter-spacing:-.7px}.brand span{color:#7c9cff}.card{background:linear-gradient(180deg,#121c31,#0f172a);border:1px solid var(--line);border-radius:24px;padding:22px;margin:14px 0;box-shadow:0 18px 50px #0006}
+.hero{text-align:center;padding:40px 22px}.hero h1{font-size:clamp(38px,8vw,70px);margin:0 0 10px;letter-spacing:-3px}.hero p{color:var(--muted);font-size:17px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+button,input,select{font:inherit;border-radius:14px;padding:13px;border:1px solid var(--line)}input,select{width:100%;background:#0a1121;color:var(--text);outline:none}
+button{border:0;background:linear-gradient(135deg,#4f7cff,#6d5dfc);color:#fff;font-weight:800;cursor:pointer;box-shadow:0 8px 20px #3157d455}button:hover{transform:translateY(-1px)}button.secondary{background:#1d2940;box-shadow:none}button.good{background:linear-gradient(135deg,#16a34a,#22c55e)}button.bad{background:linear-gradient(135deg,#dc2626,#ef4444)}button.gold{background:linear-gradient(135deg,#d97706,#f59e0b);color:#111827}button:disabled{opacity:.35;cursor:not-allowed;transform:none}
+label{display:block;color:#cbd5e1;font-size:14px;font-weight:700}label input,label select{margin-top:7px}
+.code{font-size:clamp(34px,9vw,58px);font-weight:1000;letter-spacing:8px;text-align:center;background:#070d1a;border:1px dashed #53678e;border-radius:18px;padding:16px;margin:12px 0;color:#fff}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.muted{color:var(--muted)}.center{text-align:center}.score{font-size:30px;font-weight:950}.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 11px;background:#1d2940;color:#cbd5e1;font-size:12px;font-weight:800}
+.team{background:#0a1121;border:1px solid #22304b;border-radius:18px;padding:16px;margin:10px 0}.team.winner{border-color:var(--gold);box-shadow:0 0 0 2px #f59e0b22,0 10px 35px #f59e0b12}
+.teamname{font-size:18px;font-weight:850}.rank{width:32px;height:32px;border-radius:10px;background:#1b2740;display:grid;place-items:center;font-weight:900}
+.buzz{width:min(430px,100%);aspect-ratio:1;border-radius:50%;font-size:48px;letter-spacing:2px;background:radial-gradient(circle at 35% 25%,#91a9ff,#4f46e5 50%,#25206d);border:10px solid #202c4b;box-shadow:0 25px 60px #4f46e544,inset 0 0 35px #fff2;transition:.12s}
+.buzz:active{transform:scale(.96)}.status{padding:18px;border-radius:18px;background:#172554;border:1px solid #334f9d}.status.win{background:#3a2805;border-color:#8b5e12}.status.wait{background:#111827}
+.actiongrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.actiongrid button{padding:18px}
+.sep{height:1px;background:var(--line);margin:18px 0}.small{font-size:13px}.dangerbox{background:#3b0b0b;border:1px solid #7f1d1d;border-radius:14px;padding:12px}
+@media(max-width:600px){.wrap{padding:12px}.card{padding:17px;border-radius:20px}.hero{padding:30px 15px}.grid2{grid-template-columns:1fr}.buzz{font-size:38px}.top{align-items:flex-start}}
+</style>
+</head>
+<body><div class="wrap"><div class="top"><div class="brand">PAKKOM-<span>QUIZBUZZ</span></div><span class="pill">CERDAS CERMAT</span></div><main id="app"></main></div>
+<script>
+const K="quizbuzz_v2";let S=JSON.parse(localStorage.getItem(K)||"null"),role=null,myId=null;
+const $=s=>document.querySelector(s); const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+function id(){return Math.random().toString(36).slice(2,8).toUpperCase()}
+function save(){localStorage.setItem(K,JSON.stringify(S));render()}
+function home(){role=null;myId=null;$("#app").innerHTML=`<section class="card hero"><h1>QuizBuzz</h1><p>Bel cerdas cermat dengan sistem skor otomatis.</p><div class="grid"><button onclick="setup()">＋ Buat Permainan</button><button class="secondary" onclick="joinPage()">Gabung Permainan</button></div></section><section class="card small"><b>Versi 2:</b> jumlah tim dapat diatur oleh pembuat. Tampilan sudah responsif untuk HP.</section>`}
+function setup(){role="host";$("#app").innerHTML=`<section class="card"><h2>Buat Permainan</h2><div class="grid"><label>Jumlah maksimal tim<input id="max" type="number" min="2" max="50" value="5"></label><label>Nilai benar<input id="correct" type="number" value="10"></label><label>Pengurangan salah<input id="wrong" type="number" value="5"></label></div><br><button onclick="createRoom()">Buat Room</button> <button class="secondary" onclick="home()">Kembali</button></section>`}
+function createRoom(){let max=Math.max(2,Math.min(50,+$("#max").value||5));S={code:id(),max,correct:+$("#correct").value||10,wrong:+$("#wrong").value||5,teams:[],winner:null,started:false,winnerAt:null};save()}
+function joinPage(){$("#app").innerHTML=`<section class="card"><h2>Gabung Permainan</h2><label>Kode permainan<input id="code" maxlength="6" placeholder="ABC123" style="text-transform:uppercase"></label><br><button onclick="findRoom()">Lanjut</button> <button class="secondary" onclick="home()">Kembali</button></section>`}
+function findRoom(){if(!S||S.code!==$("#code").value.trim().toUpperCase()){alert("Room tidak ditemukan di browser ini.");return}role="player";chooseTeam()}
+function chooseTeam(){if(S.teams.length>=S.max){$("#app").innerHTML=`<section class="card center"><h2>Room penuh</h2><p class="muted">${S.teams.length}/${S.max} tim sudah bergabung.</p><button onclick="home()">Kembali</button></section>`;return}
+$("#app").innerHTML=`<section class="card"><h2>Masukkan nama tim</h2><input id="name" maxlength="25" placeholder="Contoh: Garuda"><br><br><button onclick="addTeam()">Masuk ke Room</button></section><section class="card"><b>Room ${S.code}</b><p class="muted">${S.teams.length}/${S.max} slot terisi.</p></section>`}
+function addTeam(){let n=$("#name").value.trim();if(!n)return alert("Masukkan nama tim.");if(S.teams.some(t=>t.name.toLowerCase()===n.toLowerCase()))return alert("Nama tim sudah dipakai.");let t={id:id(),name:n,score:0};S.teams.push(t);myId=t.id;save()}
+function host(){let w=S.teams.find(t=>t.id===S.winner);$("#app").innerHTML=`<section class="card"><div class="row"><div><h2>Ruang Pembuat</h2><span class="pill">${S.teams.length}/${S.max} tim</span></div><button class="secondary" onclick="home()">Keluar</button></div><div class="code">${S.code}</div><p class="center muted">Bagikan kode kepada semua peserta.</p></section>
+<section class="card"><h2>Papan Skor</h2>${board()}</section>
+<section class="card"><h2>Kontrol Bel</h2>${w?`<div class="status win center"><div class="small">BEL DITEKAN OLEH</div><h2>${esc(w.name)}</h2><b>${S.winnerAt} ms</b></div><br><div class="actiongrid"><button class="good" onclick="result(1)">✓ BENAR +${S.correct}</button><button class="bad" onclick="result(0)">✕ SALAH -${S.wrong}</button></div><br><button class="gold" onclick="reset()">Reset Bel</button>`:`<div class="status wait center"><h2>BEL SIAP</h2><p class="muted">Tekan buka bel untuk memulai ronde.</p></div><br><button onclick="openBell()">Buka Bel</button>`}</section>`}
+function board(){return S.teams.length?S.teams.slice().sort((a,b)=>b.score-a.score).map((t,i)=>`<div class="team ${t.id===S.winner?'winner':''}"><div class="row"><div class="row"><div class="rank">${i+1}</div><span class="teamname">${esc(t.name)}</span></div><span class="score">${t.score}</span></div></div>`).join(""):`<p class="muted">Belum ada peserta.</p>`}
+function openBell(){S.started=true;S.winner=null;S.winnerAt=null;save()}
+function reset(){S.winner=null;S.winnerAt=null;S.started=true;save()}
+function result(ok){let t=S.teams.find(t=>t.id===S.winner);if(t)t.score+=ok?S.correct:-S.wrong;reset()}
+function player(){let t=S.teams.find(t=>t.id===myId);if(!t)return chooseTeam();let w=S.teams.find(t=>t.id===S.winner);$("#app").innerHTML=`<section class="card center"><div class="pill">ROOM ${S.code}</div><h1>${esc(t.name)}</h1><div class="score">${t.score} poin</div></section><section class="card center">${w?`<div class="status ${w.id===myId?'win':''}"><div class="small">${w.id===myId?'KAMU MENEKAN BEL!':'BEL SUDAH DIKUNCI'}</div><h2>${esc(w.name)}</h2><p>${w.id===myId?'Tunggu keputusan pembuat.':'Tunggu ronde berikutnya.'}</p></div>`:`<p class="muted">Siap? Tekan ketika pembawa acara memberi kesempatan.</p><button class="buzz" onclick="buzz()">BEL</button>`}</section><section class="card"><h2>Papan Skor</h2>${board()}</section>`}
+function buzz(){if(S.winner||!S.started)return;S.winner=myId;S.winnerAt=Math.floor(Math.random()*600)+120;save()}
+function render(){if(!S){home();return}if(role==="host")host();else if(role==="player")player();else home()}
+render();
+</script></body></html>
