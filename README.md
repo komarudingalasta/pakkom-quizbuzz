@@ -1,27 +1,12 @@
 # PAKKOM-QUIZBUZZ
 
-File siap di-upload ke GitHub Pages.
+GitHub Pages + Supabase Realtime.
 
-## Isi
-- `index.html`
-- `style.css`
-- `app.js`
+## Upload
+Upload `index.html`, `style.css`, dan `app.js` ke repository GitHub lalu aktifkan:
+Settings → Pages → Deploy from branch → main → root.
 
-## Upload ke GitHub
-1. Buat repository baru, misalnya `PAKKOM-QUIZBUZZ`.
-2. Upload ketiga file tersebut ke root repository.
-3. Buka **Settings → Pages**.
-4. Pada Source pilih **Deploy from a branch**.
-5. Pilih branch `main` dan folder `/ (root)`.
-6. Simpan.
-7. GitHub akan memberikan alamat GitHub Pages.
+## Penting
+Versi ini menggunakan Supabase Realtime Broadcast. Agar daftar peserta dan kontrol pembuat berjalan sempurna, mekanisme sinkronisasi room sebaiknya memakai database Supabase sebagai sumber kebenaran. Broadcast saja tidak menyimpan state untuk peserta yang masuk terlambat.
 
-## Catatan
-File ini adalah tahap tampilan dan alur dasar. Data demo masih menggunakan localStorage, sehingga belum sinkron antar-HP.
-
-Untuk tahap real-time berikutnya, `app.js` akan dihubungkan ke backend seperti Supabase. Setelah itu:
-- Pembuat membuat room.
-- Peserta dari HP berbeda masuk dengan kode.
-- Daftar peserta tampil real-time.
-- Tekanan BEL diterima server dan hanya peserta tercepat yang menang.
-- Benar/Salah mengubah skor semua perangkat secara real-time.
+Publishable key boleh berada di frontend. Jangan pernah memasukkan secret/service_role key ke repository.
