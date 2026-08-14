@@ -76,7 +76,6 @@ async function joinTeam(){
  teamName=$("#name").value.trim();if(!teamName)return toast("Nama tim wajib diisi.");
  await load();if(teams.length>=roomData.max_teams)return toast("Room sudah penuh.");
  if(teams.some(t=>t.name.toLowerCase()===teamName.toLowerCase()))return toast("Nama tim sudah dipakai.");
- if(teams.some(t=>t.sound_id===soundId))return toast("Suara itu sudah dipakai tim lain. Pilih suara lain.");
  let q=await db.from("quiz_teams").insert({room_id:roomData.id,name:teamName,score:0,sound_id:soundId}).select().single();
  if(q.error)return toast("Gagal masuk: "+q.error.message);
  teamId=q.data.id;await load();render();
