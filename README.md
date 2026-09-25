@@ -1,19 +1,23 @@
-# PAKKOM-QUIZBUZZ V4 — Classroom Arena
+# PAKKOM-QUIZBUZZ V5.2 — Storage-Free Photo
 
-Fokus versi ini: stabilitas join dan media di HP.
+QuizBuzz adalah bel digital real-time untuk cerdas cermat/rebutan cepat.
 
-## Perubahan V4
-- Nama tim disimpan sebagai draft saat diketik; tidak hilang ketika pindah ke halaman media.
-- Foto selfie memakai kamera/file capture bawaan perangkat, bukan getUserMedia.
-- Opsi Pilih Foto dari galeri.
-- Video selfie memakai recorder bawaan perangkat agar lebih kompatibel dengan Android/WebView.
-- Media opsional: kegagalan Storage tidak menggagalkan proses gabung.
-- Preview media sebelum bergabung.
-- Waktu buzz tercepat ditampilkan dalam detik.
-- Persistent session/reconnect, keluar peserta, Akhiri Game host, podium tetap tersedia.
-- Rebutan setelah jawaban salah, Batalkan Buzz, Batalkan Soal, Undo skor, Projector Mode.
+## Perubahan V5.2
+- Firebase Storage tidak digunakan.
+- Foto selfie/galeri dipotong persegi dan dikompres menjadi avatar 200×200 di perangkat peserta.
+- Avatar kecil disimpan sementara sebagai Data URL di Realtime Database pada data tim.
+- Foto tampil di lobby/papan skor, host, pemenang buzz, projector, dan podium.
+- Jika peserta tidak memakai foto, aplikasi memakai inisial tim.
+- Video dinonaktifkan agar aplikasi ringan dan tetap dapat berjalan tanpa Storage.
 
-## Firebase
-Aktifkan Anonymous Authentication, Realtime Database, dan Storage. Publikasikan database.rules.json dan storage.rules.
+## Firebase yang dibutuhkan
+1. Authentication → Anonymous sign-in: aktifkan.
+2. Realtime Database: aktifkan.
+3. Publish isi `database.rules.json` ke Realtime Database → Rules.
+4. Firebase Storage tidak perlu diaktifkan.
 
-Catatan: fitur kamera/file capture harus diuji dari situs HTTPS (misalnya GitHub Pages) di browser perangkat. Preview lokal/WebView tertentu dapat membatasi kamera.
+## Hosting
+Upload isi folder ini ke GitHub Pages seperti versi sebelumnya.
+
+## Catatan foto
+Foto asli tidak dikirim. Browser lebih dulu crop dan kompres foto menjadi avatar kecil. Ukuran string avatar dibatasi di aplikasi dan Database Rules agar tidak membebani Realtime Database.
