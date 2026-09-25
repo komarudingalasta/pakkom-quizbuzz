@@ -5,17 +5,24 @@
     "rooms": {
       "$code": {
         ".read": "auth != null",
-        ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || data.child('hostUid').val() === auth.uid)",
+        ".write": "auth != null",
+        "hostUid": {
+          ".validate": "newData.isString() && (!data.exists() ? newData.val() === auth.uid : newData.val() === data.val())"
+        },
+        "maxTeams": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 50" },
+        "locked": { ".validate": "newData.isBoolean()" },
+        "status": { ".validate": "!newData.exists() || newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'" },
         "teams": {
           "$teamId": {
-            ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() === auth.uid) || data.child('ownerUid').val() === auth.uid || root.child('rooms').child($code).child('hostUid').val() === auth.uid)",
+            "ownerUid": {
+              ".validate": "newData.isString() && (!data.exists() ? newData.val() === auth.uid : newData.val() === data.val())"
+            },
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30" },
+            "score": { ".validate": "newData.isNumber()" },
             "avatarPhoto": {
-              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 70000)"
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 70000 && (newData.val().beginsWith('data:image/jpeg;base64,') || newData.val().beginsWith('data:image/webp;base64,') || newData.val().beginsWith('data:image/png;base64,')))"
             }
           }
-        },
-        "buzzer": {
-          ".write": "auth != null && (root.child('rooms').child($code).child('hostUid').val() === auth.uid || (data.child('open').val() === true && data.child('winnerTeamId').val() === null && newData.child('open').val() === false && newData.child('winnerTeamId').val() !== null && root.child('rooms').child($code).child('teams').child(newData.child('winnerTeamId').val()).child('ownerUid').val() === auth.uid))"
         }
       }
     }
