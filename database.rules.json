@@ -8,7 +8,10 @@
         ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || data.child('hostUid').val() === auth.uid)",
         "teams": {
           "$teamId": {
-            ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() === auth.uid) || data.child('ownerUid').val() === auth.uid || root.child('rooms').child($code).child('hostUid').val() === auth.uid)"
+            ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() === auth.uid) || data.child('ownerUid').val() === auth.uid || root.child('rooms').child($code).child('hostUid').val() === auth.uid)",
+            "avatarPhoto": {
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 70000)"
+            }
           }
         },
         "buzzer": {
