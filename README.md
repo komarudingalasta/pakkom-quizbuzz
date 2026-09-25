@@ -1,3 +1,15 @@
+# PAKKOM-QUIZBUZZ V5.2.1 – Permission Fix
+
+Perbaikan khusus Firebase Realtime Database permission denied saat peserta bergabung.
+Foto tetap storage-free: avatar kecil disimpan sementara di Realtime Database.
+
+## Wajib setelah upload
+Salin seluruh isi `database.rules.json` ke Firebase Console > Realtime Database > Rules lalu Publish.
+Anonymous Authentication harus aktif.
+
+## Catatan
+Rules V5.2.1 memprioritaskan kompatibilitas alur aplikasi (create room, join, buzzer, scoring) sambil menjaga hostUid dan ownerUid tidak dapat diganti setelah dibuat. Hardening hak host per-path dapat dilakukan pada versi berikutnya setelah seluruh alur tervalidasi.
+
 # PAKKOM-QUIZBUZZ V5.2 — Storage-Free Photo
 
 QuizBuzz adalah bel digital real-time untuk cerdas cermat/rebutan cepat.
