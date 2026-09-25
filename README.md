@@ -31,3 +31,9 @@ GitHub → Settings → Pages → Deploy from branch → main → /(root).
 
 ## Catatan
 Firebase Web config bukan secret. Jangan pernah memasukkan service-account/private key ke GitHub.
+
+## Update QuizBuzz V2.1
+- 30 pilihan sound buzzer. Sound 1–7 memakai MP3 lama; sound 8–30 dibuat ringan dengan Web Audio sehingga tidak menambah file besar.
+- Sound boleh sama antar tim dan tersedia tombol Preview serta Acak.
+- Batalkan Buzz: membatalkan penekan bel saat ini, membuka bel kembali, tanpa perubahan skor.
+- Batalkan Soal: menutup soal aktif, menghapus status pemenang/blocked, tanpa perubahan skor dan tetap dicatat di history.
