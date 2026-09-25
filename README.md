@@ -1,4 +1,4 @@
-# PAKKOM-QUIZBUZZ V3.2 — Clean Arena + Selfie
+# PAKKOM-QUIZBUZZ V3.3 — Clean Arena + Selfie
 
 Versi ini memakai Firebase Realtime Database, Anonymous Authentication, dan Firebase Storage.
 
@@ -33,3 +33,11 @@ Versi ini memakai Firebase Realtime Database, Anonymous Authentication, dan Fire
 - `database.rules.json`
 - `storage.rules`
 - `sounds/`
+
+
+## V3.3 — Akhiri & Keluar
+- Host: **Akhiri Game** mengubah room menjadi `finished` dan menampilkan hasil ke semua perangkat.
+- Host pada hasil akhir: **Selesai & Keluar** menghapus sesi host lokal dan kembali ke Home.
+- Peserta pada hasil akhir: **Selesai & Keluar** menghapus sesi peserta lokal dan kembali ke Home.
+- Peserta dapat **Keluar dari tim** saat game berlangsung tanpa mengakhiri game peserta lain; skor/riwayat tetap disimpan.
+- Refresh bukan keluar: persistent session tetap memulihkan room selama pengguna belum menekan tombol keluar.
