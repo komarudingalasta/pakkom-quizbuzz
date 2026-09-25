@@ -1,143 +1,53 @@
-import {createClient} from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { getDatabase, ref, get, set, update, push, onValue, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+import { firebaseConfig } from "./firebase-config.js";
 
-const URL="https://lfhjbypuhomvbyvbmydq.supabase.co";
-const KEY="sb_publishable_Me2YkKbzhq9cmS4N8F4FJA_bh1NONOt";
-const db=createClient(URL,KEY);
-const $=s=>document.querySelector(s), app=$("#app");
-let role=null,room=null,teamId=null,teamName="",soundId=1,sub=null,roomData=null,teams=[],rounds=[],lastWinner=null;
-
-const SOUNDS=Array.from({length:7},(_,i)=>[`Sound ${i+1}`,`Sound ${i+1}`]);
+const $=s=>document.querySelector(s), appEl=$("#app");
+const configured=!Object.values(firebaseConfig).some(v=>String(v).includes("PASTE_"));
+let fb,auth,db,user=null,role=null,room=null,teamId=null,teamName="",soundId=1,roomData=null,unsub=null,countTimer=null;
+const SOUNDS=Array.from({length:7},(_,i)=>`Sound ${i+1}`);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-const code=()=>Math.random().toString(36).slice(2,8).toUpperCase();
-function toast(s){let x=$("#toast");x.textContent=s;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),2400)}
-function net(s){$("#net").textContent=s}
+const newCode=()=>Math.random().toString(36).slice(2,8).toUpperCase();
+const net=s=>$("#net").textContent=s;
+function toast(s){let x=$("#toast");x.textContent=s;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),2500)}
 const audioCache=new Map();
-function beep(id=1){
-  try{
-    const n=Math.max(1,Math.min(7,Number(id)||1));
-    let a=audioCache.get(n);
-    if(!a){a=new Audio(`sounds/Sound ${n}.mp3`);a.preload="auto";audioCache.set(n,a);}
-    a.currentTime=0;
-    const p=a.play(); if(p?.catch)p.catch(()=>{});
-  }catch(e){}
-}
-function speak(name){try{speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(name+" menekan bel");u.lang="id-ID";u.rate=.9;speechSynthesis.speak(u)}catch(e){}}
+function beep(id=1){try{let n=Math.max(1,Math.min(7,+id||1)),a=audioCache.get(n);if(!a){a=new Audio(`sounds/Sound ${n}.mp3`);a.preload="auto";audioCache.set(n,a)}a.currentTime=0;a.play()?.catch(()=>{})}catch{}}
+function speak(name){try{speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(name+" menekan bel");u.lang="id-ID";u.rate=.9;speechSynthesis.speak(u)}catch{}}
+function teams(){return Object.entries(roomData?.teams||{}).map(([id,t])=>({id,...t})).sort((a,b)=>(b.score||0)-(a.score||0)||String(a.name).localeCompare(String(b.name)))}
+function rounds(){return Object.entries(roomData?.rounds||{}).map(([id,r])=>({id,...r})).sort((a,b)=>a.number-b.number)}
+function winner(){return teams().find(t=>t.id===roomData?.buzzer?.winnerTeamId)}
+function myTeam(){return teams().find(t=>t.id===teamId)}
+function storeSession(){if(room&&teamId)localStorage.setItem("pq_team",JSON.stringify({room,teamId}));}
+function clearSession(){localStorage.removeItem("pq_team")}
 
-async function load(){
- if(!room)return;
- let q=await db.from("quiz_rooms").select("*").eq("code",room).single();
- if(q.error)return;
- roomData=q.data;
- let t=await db.from("quiz_teams").select("*").eq("room_id",roomData.id).order("score",{ascending:false});
- teams=t.data||[];
- let r=await db.from("quiz_rounds").select("*").eq("room_id",roomData.id).order("round_number");
- rounds=r.data||[];
+async function init(){
+ if(!configured){net("● PERLU FIREBASE");home();toast("Isi firebase-config.js terlebih dahulu.");return}
+ try{fb=initializeApp(firebaseConfig);auth=getAuth(fb);db=getDatabase(fb);net("● AUTENTIKASI...");await signInAnonymously(auth);onAuthStateChanged(auth,u=>{user=u;if(u){net("● FIREBASE SIAP");route()}})}catch(e){console.error(e);net("● ERROR");home();toast("Firebase belum tersambung: "+e.message)}
 }
-async function refresh(){await load();render()}
-function subscribe(){
- if(sub)db.removeChannel(sub);
- sub=db.channel("quiz-room-"+room)
- .on("postgres_changes",{event:"*",schema:"public",table:"quiz_rooms",filter:"code=eq."+room},async p=>{let old=roomData?.winner_team_id,newv=p.new?.winner_team_id;if(newv&&newv!==old){let t=(await db.from("quiz_teams").select("name,sound_id").eq("id",newv).maybeSingle()).data;if(t){beep(t.sound_id);speak(t.name)}}await refresh()})
- .on("postgres_changes",{event:"*",schema:"public",table:"quiz_teams"},async p=>{if(p.new?.room_id===roomData?.id||p.old?.room_id===roomData?.id)refresh()})
- .subscribe(()=>net("● REAL-TIME"));
-}
-function home(){
- role=null;room=null;teamId=null;roomData=null;teams=[];rounds=[];
- app.innerHTML=`<div class="wrap"><section class="card hero"><div class="mark">PQ</div><h1>PAKKOM-QUIZBUZZ</h1><p>Bel cerdas cermat real-time dengan skor dan babak.</p><div class="buttons"><button id="make">Buat Permainan</button><button id="join" class="secondary">Gabung Permainan</button></div></section><section class="card"><div class="grid"><div><b>⚡ Bel cepat</b><p class="muted small">Peserta pertama langsung terkunci.</p></div><div><b>🎵 Suara unik</b><p class="muted small">Hingga 7 pilihan suara tim.</p></div><div><b>🏆 Babak & skor</b><p class="muted small">Skor lama tetap tersimpan.</p></div></div></section></div>`;
- $("#make").onclick=makePage;$("#join").onclick=joinPage;
-}
-function makePage(){
- app.innerHTML=`<div class="wrap"><section class="card"><h2>Buat Permainan</h2><p class="muted">Atur Babak 1. Babak berikutnya bisa diatur nanti.</p><div class="grid"><label>Maksimal tim<input id="max" type="number" min="2" max="50" value="5"></label><label>Nilai benar<input id="yes" type="number" value="10"></label><label>Nilai salah<input id="no" type="number" value="5"></label></div><label style="display:block;margin-top:13px">Nama babak<input id="rn" value="Babak 1" maxlength="30"></label><div class="buttons"><button id="go">Buat Room</button><button id="back" class="secondary">Kembali</button></div></section></div>`;
- $("#go").onclick=createRoom;$("#back").onclick=home;
-}
-async function createRoom(){
- net("● MENYIMPAN...");
- let max=Math.max(2,Math.min(50,+$("#max").value||5)),correct=+$("#yes").value||10,wrong=+$("#no").value||5,rn=$("#rn").value.trim()||"Babak 1";
- for(let i=0;i<12;i++){let c=code();let q=await db.from("quiz_rooms").insert({code:c,max_teams:max,correct_score:correct,wrong_score:wrong,round_number:1,round_name:rn,round_correct_score:correct,round_wrong_score:wrong,open:false,winner_team_id:null}).select().single();if(!q.error){room=c;roomData=q.data;role="host";let rr=await db.from("quiz_rounds").insert({room_id:roomData.id,round_number:1,round_name:rn,correct_score:correct,wrong_score:wrong}).select().single();if(rr.error)toast("Room dibuat, tetapi data babak gagal dibuat.");net("● REAL-TIME");subscribe();await refresh();return}}
- net("● ERROR");toast("Gagal membuat room. Periksa policy/tabel Supabase.");
-}
-function joinPage(){
- app.innerHTML=`<div class="wrap"><section class="card"><h2>Gabung Permainan</h2><p class="muted">Masukkan kode dari pembuat.</p><input id="code" maxlength="6" placeholder="ABC123" style="text-transform:uppercase"><div class="buttons"><button id="go">Lanjut</button><button id="back" class="secondary">Kembali</button></div></section></div>`;
- $("#go").onclick=checkRoom;$("#back").onclick=home;
-}
-async function checkRoom(){
- room=$("#code").value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(room))return toast("Kode harus 6 karakter.");
- net("● MENCARI...");let q=await db.from("quiz_rooms").select("*").eq("code",room).maybeSingle();if(q.error||!q.data)return toast("Room tidak ditemukan.");
- roomData=q.data;role="player";net("● REAL-TIME");subscribe();teamPage();
-}
-function teamPage(){
- app.innerHTML=`<div class="wrap"><section class="card"><span class="pill">ROOM ${room}</span><h2>Nama & Suara Tim</h2><p class="muted">Pilih suara bel untuk tim Anda.</p><input id="name" maxlength="25" placeholder="Contoh: GARUDA" autocomplete="off"><div id="sounds" class="soundgrid"></div><div class="buttons"><button id="preview" class="secondary">▶ Coba Suara</button><button id="go">Masuk ke Permainan</button></div></section></div>`;
- let sg=$("#sounds");sg.innerHTML=SOUNDS.map((s,i)=>`<button class="sound ${i+1===soundId?"active":""}" data-id="${i+1}"><b>${s[0]}</b></button>`).join("");
- sg.querySelectorAll(".sound").forEach(b=>b.onclick=()=>{soundId=+b.dataset.id;sg.querySelectorAll(".sound").forEach(x=>x.classList.remove("active"));b.classList.add("active");beep(soundId)});
- $("#preview").onclick=()=>beep(soundId);
- $("#go").onclick=joinTeam;
-}
-async function joinTeam(){
- teamName=$("#name").value.trim();if(!teamName)return toast("Nama tim wajib diisi.");
- await load();if(teams.length>=roomData.max_teams)return toast("Room sudah penuh.");
- if(teams.some(t=>t.name.toLowerCase()===teamName.toLowerCase()))return toast("Nama tim sudah dipakai.");
- let q=await db.from("quiz_teams").insert({room_id:roomData.id,name:teamName,score:0,sound_id:soundId}).select().single();
- if(q.error)return toast("Gagal masuk: "+q.error.message);
- teamId=q.data.id;await load();render();
-}
-function board(){
- if(!teams.length)return `<div class="empty">Belum ada tim.</div>`;
- return teams.map((t,i)=>`<div class="team ${t.id===roomData.winner_team_id?"winner":""}"><div class="row"><div><span class="rank">${i+1}</span><b>${esc(t.name)}</b> <span class="small">${SOUNDS[(t.sound_id-1)%SOUNDS.length][0]}</span></div><span class="score">${t.score}</span></div></div>`).join("");
-}
-async function openBell(){
- let q=await db.from("quiz_rooms").update({open:true,winner_team_id:null}).eq("id",roomData.id).eq("open",false);
- if(q.error)toast(q.error.message);await refresh();
-}
-async function buzz(){
- if(!roomData.open||roomData.winner_team_id)return;
- let q=await db.from("quiz_rooms").update({open:false,winner_team_id:teamId}).eq("id",roomData.id).eq("open",true).is("winner_team_id",null).select().single();
- if(q.error)toast("Bel sudah diambil tim lain.");else{await load();render();beep(soundId);speak(teamName)}
-}
-async function answer(ok){
- let w=teams.find(t=>t.id===roomData.winner_team_id);if(!w)return;
- let pts=ok?roomData.round_correct_score:-roomData.round_wrong_score;
- let rid=rounds.find(r=>r.round_number===roomData.round_number)?.id||null;
- let ns=w.score+pts;
- let a=await db.from("quiz_answers").insert({room_id:roomData.id,round_id:rid,team_id:w.id,result:ok?"correct":"wrong",points:pts});
- if(a.error)return toast("Gagal menyimpan jawaban.");
- let q=await db.from("quiz_teams").update({score:ns}).eq("id",w.id).eq("room_id",roomData.id);if(q.error)return toast(q.error.message);
- await db.from("quiz_rooms").update({open:false,winner_team_id:null}).eq("id",roomData.id);await refresh();
-}
-async function nextQuestion(){await openBell()}
-async function nextRoundForm(){
- app.insertAdjacentHTML("beforeend",`<div class="modal" id="roundModal"><section class="card"><h2>Mulai Babak Berikutnya</h2><p class="muted">Skor semua tim <b>tetap dipertahankan</b>.</p><div class="grid"><label>Nama babak<input id="newrn" value="Babak ${roomData.round_number+1}"></label><label>Benar<input id="newyes" type="number" value="${roomData.round_correct_score}"></label><label>Salah<input id="newno" type="number" value="${roomData.round_wrong_score}"></label></div><div class="buttons"><button id="start">Mulai Babak</button><button id="cancel" class="secondary">Batal</button></div></section></div>`);
- $("#cancel").onclick=()=>$("#roundModal").remove();
- $("#start").onclick=startRound;
-}
-async function startRound(){
- let n=roomData.round_number+1,rn=$("#newrn").value.trim()||"Babak "+n,yes=+$("#newyes").value||0,no=+$("#newno").value||0;
- let rr=await db.from("quiz_rounds").insert({room_id:roomData.id,round_number:n,round_name:rn,correct_score:yes,wrong_score:no}).select().single();if(rr.error)return toast("Gagal membuat babak: "+rr.error.message);
- let q=await db.from("quiz_rooms").update({round_number:n,round_name:rn,round_correct_score:yes,round_wrong_score:no,correct_score:yes,wrong_score:no,open:false,winner_team_id:null}).eq("id",roomData.id);
- if(q.error)return toast(q.error.message);
- $("#roundModal").remove();await refresh();
-}
-function hostRender(){
- let w=teams.find(t=>t.id===roomData.winner_team_id);
- app.innerHTML=`<div class="wrap">
- <section class="card"><div class="row"><div><span class="pill">PEMBUAT</span><h2>${esc(roomData.round_name)}</h2><p class="muted">Babak ${roomData.round_number} · Benar +${roomData.round_correct_score} · Salah -${roomData.round_wrong_score}</p></div><span class="pill">${teams.length}/${roomData.max_teams} TIM</span></div><div class="code">${room}</div><p class="center muted">Bagikan kode ini kepada peserta.</p></section>
- <section class="card"><div class="row"><h2>Papan Skor</h2><span class="pill">SKOR AKUMULATIF</span></div>${board()}</section>
- <section class="card">${w?`<div class="notice win"><div class="gold">BEL PERTAMA</div><h1>${esc(w.name)}</h1><p>Suara ${SOUNDS[(w.sound_id-1)%SOUNDS.length][0]} · tentukan hasil jawaban.</p><div class="buttons"><button class="good" id="correct">✓ BENAR +${roomData.round_correct_score}</button><button class="bad" id="wrong">✕ SALAH -${roomData.round_wrong_score}</button></div></div>`:`<div class="notice">${roomData.open?"🔔 BEL TERBUKA — menunggu peserta":"Pertanyaan berikutnya siap?"}</div><button id="open" style="width:100%;margin-top:11px" ${roomData.open?"disabled":""}>🔔 BUKA BEL / SOAL BERIKUTNYA</button>`}
- <div class="buttons"><button id="round" class="warn">➜ Lanjutkan Babak</button></div></section>
- <section class="card"><h3>Riwayat Babak</h3>${rounds.map(r=>`<div class="history"><b>Babak ${r.round_number} · ${esc(r.round_name)}</b><div class="small muted">Benar +${r.correct_score} · Salah -${r.wrong_score}</div></div>`).join("")}</section>
- </div>`;
- if($("#open"))$("#open").onclick=nextQuestion;if($("#correct"))$("#correct").onclick=()=>answer(true);if($("#wrong"))$("#wrong").onclick=()=>answer(false);$("#round").onclick=nextRoundForm;
-}
-function playerRender(){
- let me=teams.find(t=>t.id===teamId),w=teams.find(t=>t.id===roomData.winner_team_id);if(!me)return teamPage();
- app.innerHTML=`<div class="wrap"><section class="card"><div class="row"><div><span class="pill">${esc(roomData.round_name)}</span><h2>${esc(me.name)} ${SOUNDS[(me.sound_id-1)%SOUNDS.length][0]}</h2></div><div class="score">${me.score} poin</div></div><p class="muted small">Babak ${roomData.round_number} · +${roomData.round_correct_score} / -${roomData.round_wrong_score}</p></section>
- <section class="card center">${w?`<div class="notice ${w.id===teamId?"win":""}"><div>${w.id===teamId?"🎉 KAMU MENANGI BEL":"BEL SUDAH DIAMBIL"}</div><h1>${esc(w.name)}</h1><p>${w.id===teamId?"Tunggu penilaian pembuat.":"Tunggu hasil jawaban."}</p></div>`:roomData.open?`<p class="muted">Siap? Jadilah yang tercepat!</p><button class="buzz" id="buzz">BEL</button>`:`<div class="notice">⏳ Menunggu pembuat membuka bel...</div>`}</section>
- <section class="card"><div class="row"><h2>Papan Skor</h2><span class="pill">SKOR AKUMULATIF</span></div>${board()}</section></div>`;
- if($("#buzz"))$("#buzz").onclick=buzz;
-}
-function render(){
- if(!roomData)return home();
- // Jangan render ulang saat peserta masih mengetik nama.
- if(role==="player"&&!teamId)return;
- if(role==="host")hostRender();else playerRender();
-}
-(async()=>{let q=await db.from("quiz_rooms").select("id").limit(1);net(q.error?"● ERROR":"● SUPABASE SIAP");home()})();
+function watchRoom(){if(unsub)unsub();let oldWinner=null;unsub=onValue(ref(db,`rooms/${room}`),snap=>{let prev=oldWinner;roomData=snap.val();if(!roomData){toast("Room sudah tidak tersedia.");return home()}oldWinner=roomData.buzzer?.winnerTeamId||null;if(oldWinner&&oldWinner!==prev){let t=roomData.teams?.[oldWinner];if(t){beep(t.soundId);speak(t.name)}}render()})}
+function route(){let p=new URLSearchParams(location.search),display=p.get("display"),join=p.get("room");if(display){role="display";room=display.toUpperCase();watchRoom();return}if(join){room=join.toUpperCase();role="player";checkRoom(true);return}let s=JSON.parse(localStorage.getItem("pq_team")||"null");if(s?.room&&s?.teamId){room=s.room;teamId=s.teamId;role="player";get(ref(db,`rooms/${room}/teams/${teamId}`)).then(x=>x.exists()?watchRoom():(clearSession(),home()));return}home()}
+function home(){if(unsub){unsub();unsub=null}role=null;room=null;teamId=null;roomData=null;appEl.innerHTML=`<div class="wrap"><section class="card hero"><div class="mark">PQ</div><h1>PAKKOM-QUIZBUZZ</h1><p>Digital classroom buzzer real-time untuk permainan kompetitif di kelas.</p><div class="buttons"><button id="make">Buat Permainan</button><button id="join" class="secondary">Gabung Permainan</button></div></section><section class="card"><div class="grid"><div><b>⚡ Atomic Buzzer</b><p class="muted small">Pemenang pertama ditentukan transaction Firebase.</p></div><div><b>⏱️ Countdown</b><p class="muted small">3–2–1 sebelum bel aktif.</p></div><div><b>📺 Layar Arena</b><p class="muted small">Tampilan khusus proyektor.</p></div><div><b>↩️ Undo & Rebuzz</b><p class="muted small">Kontrol pertandingan lebih aman.</p></div></div></section></div>`;$("#make").onclick=makePage;$("#join").onclick=joinPage}
+function makePage(){if(!user)return toast("Menunggu Firebase...");appEl.innerHTML=`<div class="wrap"><section class="card"><h2>Buat Permainan</h2><div class="grid"><label>Maksimal tim<input id="max" type="number" min="2" max="50" value="5"></label><label>Nilai benar<input id="yes" type="number" value="10"></label><label>Nilai salah<input id="no" type="number" value="5"></label><label>Nama babak<input id="rn" value="Babak 1" maxlength="30"></label></div><div class="buttons"><button id="go">Buat Room</button><button id="back" class="secondary">Kembali</button></div></section></div>`;$("#go").onclick=createRoom;$("#back").onclick=home}
+async function createRoom(){net("● MEMBUAT ROOM...");let max=Math.max(2,Math.min(50,+$("#max").value||5)),yes=+$("#yes").value||10,no=+$("#no").value||5,name=$("#rn").value.trim()||"Babak 1";for(let i=0;i<20;i++){let c=newCode(),r=ref(db,`rooms/${c}`),s=await get(r);if(s.exists())continue;let data={hostUid:user.uid,createdAt:Date.now(),maxTeams:max,locked:false,round:{number:1,name,correct:yes,wrong:no},rounds:{r1:{number:1,name,correct:yes,wrong:no}},buzzer:{open:false,winnerTeamId:null,countdown:0,question:0,blocked:{}},teams:{},history:{}};await set(r,data);room=c;role="host";net("● REAL-TIME");watchRoom();return}toast("Gagal membuat kode room.")}
+function joinPage(){appEl.innerHTML=`<div class="wrap"><section class="card"><h2>Gabung Permainan</h2><p class="muted">Masukkan kode 6 karakter dari host.</p><input id="code" maxlength="6" placeholder="ABC123" style="text-transform:uppercase"><div class="buttons"><button id="go">Lanjut</button><button id="back" class="secondary">Kembali</button></div></section></div>`;$("#go").onclick=()=>{room=$("#code").value.trim().toUpperCase();checkRoom(false)};$("#back").onclick=home}
+async function checkRoom(fromLink=false){if(!/^[A-Z0-9]{6}$/.test(room||"")){if(fromLink)return home();return toast("Kode harus 6 karakter.")}let s=await get(ref(db,`rooms/${room}`));if(!s.exists())return toast("Room tidak ditemukan.");roomData=s.val();if(roomData.locked)return toast("Room sedang dikunci host.");role="player";teamPage()}
+function teamPage(){appEl.innerHTML=`<div class="wrap"><section class="card"><span class="pill">ROOM ${room}</span><h2>Nama & Suara Tim</h2><input id="name" maxlength="25" placeholder="Contoh: GARUDA" autocomplete="off"><div id="sounds" class="soundgrid"></div><div class="buttons"><button id="preview" class="secondary">▶ Coba Suara</button><button id="go">Masuk Permainan</button></div></section></div>`;let sg=$("#sounds");sg.innerHTML=SOUNDS.map((s,i)=>`<button class="sound ${i+1===soundId?"active":""}" data-id="${i+1}"><b>${s}</b></button>`).join("");sg.querySelectorAll(".sound").forEach(b=>b.onclick=()=>{soundId=+b.dataset.id;sg.querySelectorAll(".sound").forEach(x=>x.classList.remove("active"));b.classList.add("active");beep(soundId)});$("#preview").onclick=()=>beep(soundId);$("#go").onclick=joinTeam}
+async function joinTeam(){teamName=$("#name").value.trim();if(!teamName)return toast("Nama tim wajib diisi.");let snap=await get(ref(db,`rooms/${room}`));roomData=snap.val();if(roomData.locked)return toast("Room sudah dikunci.");let ts=teams();if(ts.length>=roomData.maxTeams)return toast("Room sudah penuh.");if(ts.some(t=>t.name.toLowerCase()===teamName.toLowerCase()))return toast("Nama tim sudah dipakai.");teamId=push(ref(db,`rooms/${room}/teams`)).key;await set(ref(db,`rooms/${room}/teams/${teamId}`),{ownerUid:user.uid,name:teamName,score:0,soundId,joinedAt:serverTimestamp()});storeSession();watchRoom()}
+function board(big=false){let ts=teams();if(!ts.length)return `<div class="empty">Belum ada tim.</div>`;return ts.map((t,i)=>`<div class="team ${t.id===roomData.buzzer?.winnerTeamId?"winner":""} ${big?"arena-team":""}"><div class="row"><div><span class="rank">${i+1}</span><b>${esc(t.name)}</b></div><span class="score">${t.score||0}</span></div></div>`).join("")}
+async function countdown(){if(roomData.buzzer?.open||roomData.buzzer?.countdown)return;await update(ref(db,`rooms/${room}/buzzer`),{open:false,winnerTeamId:null,countdown:3,blocked:{},question:(roomData.buzzer?.question||0)+1});let n=3;clearInterval(countTimer);countTimer=setInterval(async()=>{n--;if(n>0)await update(ref(db,`rooms/${room}/buzzer`),{countdown:n});else{clearInterval(countTimer);await update(ref(db,`rooms/${room}/buzzer`),{countdown:0,open:true,winnerTeamId:null,openedAt:serverTimestamp()})}},1000)}
+async function buzz(){let me=myTeam();if(!me||roomData.buzzer?.blocked?.[teamId])return;let b=ref(db,`rooms/${room}/buzzer`);let result=await runTransaction(b,current=>{if(!current||current.open!==true||current.winnerTeamId)return;return {...current,open:false,winnerTeamId:teamId,winnerUid:user.uid,wonAt:Date.now()}});if(!result.committed)toast("Bel sudah diambil tim lain.")}
+async function judge(ok,rebuzz=false){let w=winner();if(!w)return;let pts=ok?roomData.round.correct:-roomData.round.wrong;let histKey=push(ref(db,`rooms/${room}/history`)).key;let before=w.score||0,after=before+pts;let patch={};patch[`teams/${w.id}/score`]=after;patch[`history/${histKey}`]={type:"judge",teamId:w.id,teamName:w.name,ok,points:pts,before,after,round:roomData.round.number,question:roomData.buzzer.question,at:Date.now()};patch[`lastAction`]={historyKey:histKey,teamId:w.id,before,after,at:Date.now()};patch[`buzzer/winnerTeamId`]=null;patch[`buzzer/open`]=rebuzz;patch[`buzzer/countdown`]=0;if(rebuzz&&!ok)patch[`buzzer/blocked/${w.id}`]=true;else patch[`buzzer/blocked`]={};await update(ref(db,`rooms/${room}`),patch)}
+async function undo(){let a=roomData.lastAction;if(!a)return toast("Belum ada skor yang bisa di-undo.");let h=roomData.history?.[a.historyKey];if(!h)return toast("Riwayat undo tidak ditemukan.");let patch={};patch[`teams/${a.teamId}/score`]=a.before;patch[`history/${a.historyKey}/undone`]=true;patch[`lastAction`]=null;await update(ref(db,`rooms/${room}`),patch);toast("Skor terakhir dibatalkan.")}
+async function toggleLock(){await update(ref(db,`rooms/${room}`),{locked:!roomData.locked})}
+async function kick(id){if(!confirm("Keluarkan tim ini dari room?"))return;await set(ref(db,`rooms/${room}/teams/${id}`),null)}
+function nextRoundForm(){appEl.insertAdjacentHTML("beforeend",`<div class="modal" id="roundModal"><section class="card"><h2>Babak Berikutnya</h2><div class="grid"><label>Nama<input id="newrn" value="Babak ${roomData.round.number+1}"></label><label>Benar<input id="newyes" type="number" value="${roomData.round.correct}"></label><label>Salah<input id="newno" type="number" value="${roomData.round.wrong}"></label></div><div class="buttons"><button id="start">Mulai Babak</button><button id="cancel" class="secondary">Batal</button></div></section></div>`);$("#cancel").onclick=()=>$("#roundModal").remove();$("#start").onclick=startRound}
+async function startRound(){let n=roomData.round.number+1,name=$("#newrn").value.trim()||`Babak ${n}`,correct=+$("#newyes").value||0,wrong=+$("#newno").value||0;let patch={round:{number:n,name,correct,wrong},buzzer:{open:false,winnerTeamId:null,countdown:0,question:0,blocked:{}}};patch[`rounds/r${n}`]={number:n,name,correct,wrong};await update(ref(db,`rooms/${room}`),patch);$("#roundModal").remove()}
+function qrUrl(){return `${location.origin}${location.pathname}?room=${room}`}
+function hostRender(){let w=winner(),b=roomData.buzzer||{};appEl.innerHTML=`<div class="wrap"><section class="card"><div class="row"><div><span class="pill">HOST</span><h2>${esc(roomData.round.name)}</h2><p class="muted">Babak ${roomData.round.number} · Benar +${roomData.round.correct} · Salah -${roomData.round.wrong}</p></div><span class="pill">${teams().length}/${roomData.maxTeams} TIM</span></div><div class="code">${room}</div><div id="qr" class="qr"></div><div class="buttons"><button id="display" class="secondary">📺 LAYAR PROYEKTOR</button><button id="lock" class="secondary">${roomData.locked?"🔓 BUKA ROOM":"🔒 KUNCI ROOM"}</button></div></section><section class="card"><div class="row"><h2>Papan Skor</h2><button id="undo" class="secondary" ${roomData.lastAction?"":"disabled"}>↩ UNDO SKOR</button></div>${board()}<div class="manage">${teams().map(t=>`<button class="secondary kick" data-id="${t.id}">Keluarkan ${esc(t.name)}</button>`).join("")}</div></section><section class="card controller">${b.countdown?`<div class="count">${b.countdown}</div><p class="center muted">Bersiap...</p>`:w?`<div class="notice win"><div class="gold">BEL PERTAMA</div><h1>${esc(w.name)}</h1><div class="buttons"><button class="good" id="correct">✓ BENAR +${roomData.round.correct}</button><button class="bad" id="wrongrebuzz">✕ SALAH & REBUZZ -${roomData.round.wrong}</button><button class="bad" id="wrong">✕ SALAH & SELESAI</button></div></div>`:b.open?`<div class="notice"><h2>🔔 BEL TERBUKA</h2><p>Menunggu peserta tercepat...</p></div>`:`<button id="startbuzz" class="startbuzz">MULAI 3 · 2 · 1</button>`}<div class="buttons"><button id="round" class="warn">➜ BABAK BERIKUTNYA</button></div></section><section class="card"><h3>Riwayat Babak</h3>${rounds().map(r=>`<div class="history"><b>Babak ${r.number} · ${esc(r.name)}</b><div class="small muted">Benar +${r.correct} · Salah -${r.wrong}</div></div>`).join("")}</section></div>`;
+ loadQR();$("#display").onclick=()=>window.open(`${location.pathname}?display=${room}`,"_blank");$("#lock").onclick=toggleLock;$("#undo").onclick=undo;document.querySelectorAll(".kick").forEach(x=>x.onclick=()=>kick(x.dataset.id));if($("#startbuzz"))$("#startbuzz").onclick=countdown;if($("#correct"))$("#correct").onclick=()=>judge(true,false);if($("#wrongrebuzz"))$("#wrongrebuzz").onclick=()=>judge(false,true);if($("#wrong"))$("#wrong").onclick=()=>judge(false,false);$("#round").onclick=nextRoundForm}
+async function loadQR(){let box=$("#qr");if(!box)return;box.innerHTML=`<img alt="QR Join" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrUrl())}"><div class="small muted">Scan untuk masuk langsung ke room</div>`}
+function playerRender(){let me=myTeam(),w=winner(),b=roomData.buzzer||{};if(!me){clearSession();return teamPage()}appEl.innerHTML=`<div class="wrap"><section class="card"><div class="row"><div><span class="pill">${esc(roomData.round.name)}</span><h2>${esc(me.name)}</h2></div><div class="score">${me.score||0} poin</div></div></section><section class="card center">${b.countdown?`<div class="count">${b.countdown}</div><p class="muted">Jangan tekan sebelum BEL terbuka.</p>`:w?`<div class="notice ${w.id===teamId?"win":""}"><div>${w.id===teamId?"🎉 KAMU MENANGI BEL":"BEL SUDAH DIAMBIL"}</div><h1>${esc(w.name)}</h1></div>`:b.blocked?.[teamId]?`<div class="notice">Jawaban timmu salah. Tim lain sedang berebut.</div>`:b.open?`<p class="muted">Sekarang!</p><button class="buzz" id="buzz">BEL</button>`:`<div class="notice">⏳ Menunggu host...</div>`}</section><section class="card"><h2>Papan Skor</h2>${board()}</section><button id="leave" class="secondary leave">Keluar dari tim</button></div>`;if($("#buzz"))$("#buzz").onclick=buzz;$("#leave").onclick=()=>{clearSession();teamId=null;teamPage()}}
+function displayRender(){let w=winner(),b=roomData.buzzer||{};appEl.innerHTML=`<div class="arena"><div class="arena-top"><div><span class="pill">PAKKOM-QUIZBUZZ</span><h1>${esc(roomData.round.name)}</h1></div><div class="arena-code">ROOM ${room}</div></div><div class="arena-main">${b.countdown?`<div class="mega-count">${b.countdown}</div>`:w?`<div class="arena-winner"><div>BEL PERTAMA</div><h1>${esc(w.name)}</h1></div>`:b.open?`<div class="arena-open">🔔 BUZZ!</div>`:`<div class="arena-wait">SIAPKAN TIM</div>`}</div><div class="arena-board">${board(true)}</div></div>`}
+function render(){if(!roomData)return;if(role==="host")hostRender();else if(role==="display")displayRender();else if(role==="player"&&teamId)playerRender()}
+init();
