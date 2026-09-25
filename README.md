@@ -1,39 +1,35 @@
-# PAKKOM-QUIZBUZZ V3 — Firebase Realtime Database
+# PAKKOM-QUIZBUZZ V3.2 — Clean Arena + Selfie
 
-Versi ini sudah dimigrasikan dari Supabase ke Firebase Realtime Database dan menambahkan fondasi QuizBuzz V3: anonymous auth, transaction/atomic buzzer, countdown, rebuzz setelah jawaban salah, undo skor, QR join, reconnect tim, lock room, kick tim, host control, riwayat aksi, dan mode layar proyektor.
+Versi ini memakai Firebase Realtime Database, Anonymous Authentication, dan Firebase Storage.
 
-## 1. Buat Firebase Project
-1. Firebase Console → Add project → misalnya `pakkom-quizbuzz`.
-2. Build → Authentication → Get started → Sign-in method → aktifkan **Anonymous**.
-3. Build → Realtime Database → Create Database. Pilih region terdekat yang tersedia (umumnya Singapore untuk Indonesia) dan mulai dalam locked mode.
-4. Project settings → Your apps → Web (`</>`) → Register app.
-5. Salin konfigurasi Web App ke `firebase-config.js`.
+## Fitur utama
+- Atomic buzzer via Firebase transaction
+- Countdown 3–2–1, rebuzz, Batalkan Buzz, Batalkan Soal, undo skor
+- 30 pilihan sound buzzer
+- Projector Arena dan podium
+- Persistent session: peserta/host kembali ke permainan setelah refresh
+- Foto atau video selfie opsional (maks. ±3 detik, tanpa audio)
+- Media pemenang tampil bersama nama tim di host controller dan layar proyektor
+- Foto/video juga dipakai sebagai identitas tim/podium
 
-## 2. Pasang Rules
-Realtime Database → Rules → ganti seluruh rules dengan isi `database.rules.json` → Publish.
+## Setup Firebase
+1. Authentication > Sign-in method > aktifkan **Anonymous**.
+2. Realtime Database > Rules > tempel isi `database.rules.json` lalu Publish.
+3. Storage > Get started / aktifkan Firebase Storage.
+4. Storage > Rules > tempel isi `storage.rules` lalu Publish.
+5. `firebase-config.js` sudah berisi konfigurasi project `pakkom-quizbuzz` yang digunakan pada pengembangan ini.
 
-Catatan: rules ini membatasi kontrol room/skor ke UID host dan tim ke UID pemilik. Buzzer peserta hanya boleh mengisi pemenang saat buzzer memang terbuka dan masih kosong. Penentuan pertama juga memakai transaction Firebase.
+## Catatan kamera
+- Kamera memerlukan HTTPS atau localhost. GitHub Pages memenuhi syarat HTTPS.
+- Pengguna dapat memilih **Lewati**, jadi kamera tidak wajib.
+- Video direkam tanpa audio, sekitar 3 detik, bitrate rendah, dan dibatasi Storage Rules <3 MB.
+- Untuk penggunaan siswa, sesuaikan penggunaan foto/video dengan kebijakan dan persetujuan sekolah yang berlaku.
 
-## 3. Upload GitHub Pages
-Upload seluruh isi folder ini, termasuk folder `sounds`, `firebase-config.js`, dan `database.rules.json` (rules file aman disimpan; bukan secret).
-
-GitHub → Settings → Pages → Deploy from branch → main → /(root).
-
-## 4. Uji
-- Buka URL sebagai host → Buat Permainan.
-- Scan QR / masukkan kode pada perangkat peserta.
-- Peserta pilih nama dan suara tim.
-- Host tekan `MULAI 3…2…1`.
-- Hanya pemenang transaksi pertama yang tercatat.
-- Jika salah, host dapat `SALAH & REBUZZ` atau `SALAH & SELESAI`.
-- `UNDO` membatalkan keputusan skor terakhir.
-- `LAYAR PROYEKTOR` membuka tampilan publik khusus pertandingan.
-
-## Catatan
-Firebase Web config bukan secret. Jangan pernah memasukkan service-account/private key ke GitHub.
-
-## Update QuizBuzz V3.0 Beta
-- 30 pilihan sound buzzer. Sound 1–7 memakai MP3 lama; sound 8–30 dibuat ringan dengan Web Audio sehingga tidak menambah file besar.
-- Sound boleh sama antar tim dan tersedia tombol Preview serta Acak.
-- Batalkan Buzz: membatalkan penekan bel saat ini, membuka bel kembali, tanpa perubahan skor.
-- Batalkan Soal: menutup soal aktif, menghapus status pemenang/blocked, tanpa perubahan skor dan tetap dicatat di history.
+## File
+- `index.html`
+- `style.css`
+- `app.js`
+- `firebase-config.js`
+- `database.rules.json`
+- `storage.rules`
+- `sounds/`
