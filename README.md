@@ -1,6 +1,6 @@
-# PAKKOM-QUIZBUZZ V2 — Firebase Realtime Database
+# PAKKOM-QUIZBUZZ V3 — Firebase Realtime Database
 
-Versi ini sudah dimigrasikan dari Supabase ke Firebase Realtime Database dan menambahkan fondasi QuizBuzz V2: anonymous auth, transaction/atomic buzzer, countdown, rebuzz setelah jawaban salah, undo skor, QR join, reconnect tim, lock room, kick tim, host control, riwayat aksi, dan mode layar proyektor.
+Versi ini sudah dimigrasikan dari Supabase ke Firebase Realtime Database dan menambahkan fondasi QuizBuzz V3: anonymous auth, transaction/atomic buzzer, countdown, rebuzz setelah jawaban salah, undo skor, QR join, reconnect tim, lock room, kick tim, host control, riwayat aksi, dan mode layar proyektor.
 
 ## 1. Buat Firebase Project
 1. Firebase Console → Add project → misalnya `pakkom-quizbuzz`.
@@ -32,7 +32,7 @@ GitHub → Settings → Pages → Deploy from branch → main → /(root).
 ## Catatan
 Firebase Web config bukan secret. Jangan pernah memasukkan service-account/private key ke GitHub.
 
-## Update QuizBuzz V2.1
+## Update QuizBuzz V3.0 Beta
 - 30 pilihan sound buzzer. Sound 1–7 memakai MP3 lama; sound 8–30 dibuat ringan dengan Web Audio sehingga tidak menambah file besar.
 - Sound boleh sama antar tim dan tersedia tombol Preview serta Acak.
 - Batalkan Buzz: membatalkan penekan bel saat ini, membuka bel kembali, tanpa perubahan skor.
