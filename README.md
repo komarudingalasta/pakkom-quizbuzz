@@ -1,29 +1,33 @@
-# PAKKOM-QUIZBUZZ
+# PAKKOM-QUIZBUZZ V2 — Firebase Realtime Database
 
-## 1. Supabase
-Buka Supabase → SQL Editor → New query.
-Salin seluruh isi `supabase.sql`, lalu klik **Run**.
+Versi ini sudah dimigrasikan dari Supabase ke Firebase Realtime Database dan menambahkan fondasi QuizBuzz V2: anonymous auth, transaction/atomic buzzer, countdown, rebuzz setelah jawaban salah, undo skor, QR join, reconnect tim, lock room, kick tim, host control, riwayat aksi, dan mode layar proyektor.
 
-## 2. GitHub
-Upload:
-- index.html
-- style.css
-- app.js
+## 1. Buat Firebase Project
+1. Firebase Console → Add project → misalnya `pakkom-quizbuzz`.
+2. Build → Authentication → Get started → Sign-in method → aktifkan **Anonymous**.
+3. Build → Realtime Database → Create Database. Pilih region terdekat yang tersedia (umumnya Singapore untuk Indonesia) dan mulai dalam locked mode.
+4. Project settings → Your apps → Web (`</>`) → Register app.
+5. Salin konfigurasi Web App ke `firebase-config.js`.
 
-Aktifkan GitHub Pages:
-Settings → Pages → Deploy from branch → main → /(root).
+## 2. Pasang Rules
+Realtime Database → Rules → ganti seluruh rules dengan isi `database.rules.json` → Publish.
 
-## 3. Uji
-Buka URL GitHub Pages di HP/laptop pembuat.
-- Buat permainan.
-- Catat kode 6 karakter.
-- Buka URL yang sama pada HP peserta.
-- Masukkan kode dan nama tim.
-- Pembuat buka BEL.
-- Peserta menekan BEL.
-- Pembuat memilih BENAR/SALAH.
+Catatan: rules ini membatasi kontrol room/skor ke UID host dan tim ke UID pemilik. Buzzer peserta hanya boleh mengisi pemenang saat buzzer memang terbuka dan masih kosong. Penentuan pertama juga memakai transaction Firebase.
 
-## Catatan keamanan
-Publishable key ada di app.js dan boleh digunakan pada frontend. Jangan pernah menaruh service_role/secret key di GitHub.
+## 3. Upload GitHub Pages
+Upload seluruh isi folder ini, termasuk folder `sounds`, `firebase-config.js`, dan `database.rules.json` (rules file aman disimpan; bukan secret).
 
-Versi ini menggunakan database Supabase + Postgres Realtime. Kebijakan anon pada SQL dibuat longgar agar prototipe dapat langsung diuji. Untuk pemakaian kompetisi publik, sebaiknya ditambah autentikasi dan validasi server/RPC agar peserta tidak dapat mengubah skor secara manual.
+GitHub → Settings → Pages → Deploy from branch → main → /(root).
+
+## 4. Uji
+- Buka URL sebagai host → Buat Permainan.
+- Scan QR / masukkan kode pada perangkat peserta.
+- Peserta pilih nama dan suara tim.
+- Host tekan `MULAI 3…2…1`.
+- Hanya pemenang transaksi pertama yang tercatat.
+- Jika salah, host dapat `SALAH & REBUZZ` atau `SALAH & SELESAI`.
+- `UNDO` membatalkan keputusan skor terakhir.
+- `LAYAR PROYEKTOR` membuka tampilan publik khusus pertandingan.
+
+## Catatan
+Firebase Web config bukan secret. Jangan pernah memasukkan service-account/private key ke GitHub.
