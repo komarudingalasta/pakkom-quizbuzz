@@ -1,0 +1,20 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || data.child('hostUid').val() === auth.uid)",
+        "teams": {
+          "$teamId": {
+            ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() === auth.uid) || data.child('ownerUid').val() === auth.uid || root.child('rooms').child($code).child('hostUid').val() === auth.uid)"
+          }
+        },
+        "buzzer": {
+          ".write": "auth != null && (root.child('rooms').child($code).child('hostUid').val() === auth.uid || (data.child('open').val() === true && data.child('winnerTeamId').val() === null && newData.child('open').val() === false && newData.child('winnerTeamId').val() !== null && root.child('rooms').child($code).child('teams').child(newData.child('winnerTeamId').val()).child('ownerUid').val() === auth.uid))"
+        }
+      }
+    }
+  }
+}
