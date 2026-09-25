@@ -41,3 +41,10 @@ Versi ini memakai Firebase Realtime Database, Anonymous Authentication, dan Fire
 - Peserta pada hasil akhir: **Selesai & Keluar** menghapus sesi peserta lokal dan kembali ke Home.
 - Peserta dapat **Keluar dari tim** saat game berlangsung tanpa mengakhiri game peserta lain; skor/riwayat tetap disimpan.
 - Refresh bukan keluar: persistent session tetap memulihkan room selama pengguna belum menekan tombol keluar.
+
+## V3.4 Selfie & Join Fix
+- Nama tim dipertahankan saat kembali dari halaman selfie.
+- Foto selfie tersedia sebagai opsi utama selain video.
+- Perekaman video dibuat lebih kompatibel; perangkat yang tidak mendukung diarahkan ke Foto Selfie.
+- Upload media memiliki timeout 8 detik. Jika Storage lambat/gagal, peserta tetap masuk permainan tanpa media.
+- Status online peserta disimpan saat berhasil bergabung.
