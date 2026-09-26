@@ -9,31 +9,18 @@
         "hostUid": {
           ".validate": "newData.isString() && (!data.exists() ? newData.val() === auth.uid : newData.val() === data.val())"
         },
-        "maxTeams": {
-          ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 50"
-        },
-        "locked": {
-          ".validate": "newData.isBoolean()"
-        },
-        "status": {
-          ".validate": "!newData.exists() || newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'"
-        },
+        "maxTeams": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 50" },
+        "locked": { ".validate": "newData.isBoolean()" },
+        "status": { ".validate": "!newData.exists() || newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'finished'" },
         "teams": {
           "$teamId": {
             "ownerUid": {
               ".validate": "newData.isString() && (!data.exists() ? newData.val() === auth.uid : newData.val() === data.val())"
             },
-            "name": {
-              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
-            },
-            "score": {
-              ".validate": "newData.isNumber()"
-            },
-            "photoBase64": {
-              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 90000)"
-            },
-            "photoType": {
-              ".validate": "!newData.exists() || newData.val() === 'image/jpeg'"
+            "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30" },
+            "score": { ".validate": "newData.isNumber()" },
+            "avatarPhoto": {
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 70000 && (newData.val().beginsWith('data:image/jpeg;base64,') || newData.val().beginsWith('data:image/webp;base64,') || newData.val().beginsWith('data:image/png;base64,')))"
             }
           }
         }
