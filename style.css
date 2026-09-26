@@ -87,3 +87,6 @@ header{max-width:1480px;padding:14px 24px}.brand{color:var(--ink)}.brand span{ba
   header{padding:10px 12px!important}.brand{font-size:14px!important;gap:7px}.brand span{width:34px;height:34px}.status{font-size:8px!important;padding:6px 8px!important}
   .home-wrap{padding-left:14px!important;padding-right:14px!important}.home-copy h1{font-size:39px!important}.home-logo b{font-size:23px!important}
 }
+
+/* V5.4.1 result feedback */
+.result-state{gap:18px}.result-badge{display:inline-flex;align-items:center;justify-content:center;min-width:190px;padding:15px 24px;border-radius:16px;font-size:30px;font-weight:950;letter-spacing:.5px}.result-correct .result-badge{background:#e8f8ee;color:#11833e;border:2px solid #b9e8c9}.result-wrong .result-badge{background:#fff0f0;color:#c92e3c;border:2px solid #f2c2c7}
