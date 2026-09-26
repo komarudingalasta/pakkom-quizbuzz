@@ -69,3 +69,21 @@ header{max-width:1480px;padding:14px 24px}.brand{color:var(--ink)}.brand span{ba
 .podium .podavatar .animal-face{font-size:52px}.trophy{filter:none}
 @media(max-width:900px){.avatar-grid{grid-template-columns:repeat(5,1fr)}.compact-sounds{grid-template-columns:repeat(3,1fr)}.lobby-layout{grid-template-columns:1fr}.qr-panel{border-left:0;border-top:1px solid #e4e7e9;padding-top:18px}.match-layout{grid-template-columns:1fr}.leader-panel{border-left:0;border-top:1px solid #e2e6e9}.winner-state{grid-template-columns:150px 1fr}.winner-animal{width:145px;height:145px}.winner-copy h1{font-size:42px}.time-chip{font-size:28px}.projector-strip{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:600px){header{padding:10px 14px}.brand{font-size:15px}.status{font-size:9px}.setup-card{padding:18px}.avatar-grid{grid-template-columns:repeat(4,1fr)}.animal-avatar{min-height:82px}.animal-avatar span{font-size:34px}.sound-row{align-items:flex-start;flex-direction:column}.compact-sounds{grid-template-columns:repeat(2,1fr);max-height:160px}.competition-shell{margin:0;border-radius:0;border-left:0;border-right:0}.competition-top{height:auto;min-height:58px;padding:10px 14px;gap:10px;flex-wrap:wrap}.qb-logo{font-size:21px}.match-meta{order:3;width:100%;font-size:11px}.connected{display:none}.lobby-layout{padding:16px}.room-title strong{font-size:34px}.team-cards{grid-template-columns:repeat(3,1fr)}.team-card{min-height:104px}.animal-card{width:52px;height:52px;font-size:36px}.qr-panel .qr img{width:135px;height:135px}.control-stage{padding:18px}.leader-panel{padding:14px}.leader-panel h3{margin:-14px -14px 8px}.bell-orb{width:145px;height:145px;font-size:58px;box-shadow:0 0 0 10px #fff4cf,0 0 0 19px #fff9e8}.ready-state h1{font-size:42px}.open-bell{min-width:0;width:100%}.winner-state{grid-template-columns:1fr;grid-template-areas:"avatar" "copy" "decision" "sub";text-align:center}.winner-animal{margin:auto}.winner-copy h1{font-size:38px}.decision-grid{gap:8px}.decision-grid button{font-size:19px}.bottom-controls{justify-content:center}.projector-btn{margin-left:0;width:100%}.projector-screen{padding:16px}.projector-head{font-size:11px}.projector-winner,.projector-feedback{gap:20px;flex-direction:column;text-align:center}.projector-avatar{width:160px;height:160px}.projector-strip{grid-template-columns:repeat(2,1fr)}}
+
+/* V5.3.1 — mobile-first repair. Must stay at end of file so it wins cascade. */
+*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}#app{min-width:0}.wrap,.home-wrap,.home-hero,.home-copy,.home-actions{min-width:0}
+@media(max-width:760px){
+  .home-wrap{max-width:100%;padding:18px 16px 30px}
+  .home-hero{display:flex!important;flex-direction:column!important;min-height:0!important;gap:26px!important;padding:24px 0 12px!important;overflow:visible!important}
+  .home-copy,.home-actions{width:100%!important;max-width:100%!important}
+  .home-logo{gap:10px}.home-logo span{width:46px;height:46px;flex:0 0 46px}.home-logo b{font-size:25px!important}
+  .home-copy h1{font-size:clamp(38px,12vw,56px)!important;line-height:1.02!important;letter-spacing:-1.8px!important;margin:28px 0 18px!important;overflow-wrap:normal;word-break:normal}
+  .home-copy p{font-size:17px!important;line-height:1.55!important;margin:0;max-width:34rem}
+  .home-actions{display:grid!important;grid-template-columns:1fr!important;gap:12px!important}
+  .home-action{width:100%!important;min-width:0!important;grid-template-columns:48px minmax(0,1fr) 24px!important;min-height:88px!important;padding:16px!important;border-radius:16px!important;overflow:hidden}
+  .home-action b{font-size:18px!important}.home-action small{font-size:13px!important;white-space:normal}.home-action i{justify-self:end}
+}
+@media(max-width:390px){
+  header{padding:10px 12px!important}.brand{font-size:14px!important;gap:7px}.brand span{width:34px;height:34px}.status{font-size:8px!important;padding:6px 8px!important}
+  .home-wrap{padding-left:14px!important;padding-right:14px!important}.home-copy h1{font-size:39px!important}.home-logo b{font-size:23px!important}
+}
