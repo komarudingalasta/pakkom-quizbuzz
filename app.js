@@ -35,17 +35,67 @@ function clearToast(){let x=$("#toast");if(!x)return;clearTimeout(toastTimer);x.
 function toast(s){let x=$("#toast");clearTimeout(toastTimer);x.textContent=s;x.classList.add("show");toastTimer=setTimeout(()=>{x.classList.remove("show");x.textContent=""},2500)}
 function askConfirm({title,message,confirmText="Ya, lanjutkan",cancelText="Batal",danger=false}={}){return new Promise(resolve=>{document.querySelector("#pqConfirm")?.remove();let el=document.createElement("div");el.id="pqConfirm";el.className="modal pq-confirm";el.innerHTML=`<section class="confirm-sheet"><button class="confirm-close" aria-label="Tutup">×</button><div class="confirm-symbol">↗</div><h2>${esc(title||"Konfirmasi")}</h2><p>${esc(message||"")}</p><div class="confirm-actions"><button class="secondary confirm-cancel">${esc(cancelText)}</button><button class="${danger?"bad":""} confirm-ok">${esc(confirmText)}</button></div></section>`;document.body.appendChild(el);let done=v=>{el.remove();resolve(v)};el.querySelector(".confirm-close").onclick=()=>done(false);el.querySelector(".confirm-cancel").onclick=()=>done(false);el.querySelector(".confirm-ok").onclick=()=>done(true);el.addEventListener("click",e=>{if(e.target===el)done(false)})})}
 const audioCache=new Map();
-let audioCtx=null;
-function synthSound(id){
+let audioCtx=null, audioQueue=Promise.resolve(), audioGeneration=0;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function unlockAudio(){
  try{
+  audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==="suspended") await audioCtx.resume();
+  // Memanggil voices setelah interaksi membantu beberapa browser Android memuat TTS.
+  if("speechSynthesis" in window) speechSynthesis.getVoices();
+ }catch{}
+}
+document.addEventListener("pointerdown",unlockAudio,{once:true,capture:true});
+function stopAudioQueue(){
+ audioGeneration++;
+ try{speechSynthesis.cancel()}catch{}
+ for(const a of audioCache.values()){try{a.pause();a.currentTime=0}catch{}}
+ audioQueue=Promise.resolve();
+}
+function enqueueAudio(task,{replace=false}={}){
+ if(replace) stopAudioQueue();
+ const gen=audioGeneration;
+ audioQueue=audioQueue.then(async()=>{if(gen!==audioGeneration)return;await unlockAudio();if(gen!==audioGeneration)return;await task(gen)}).catch(e=>console.warn("AUDIO_QUEUE",e));
+ return audioQueue;
+}
+function synthTone(kind="open"){
+ return new Promise(resolve=>{
+  try{
+   audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+   const ctx=audioCtx, now=ctx.currentTime, master=ctx.createGain();master.connect(ctx.destination);master.gain.setValueAtTime(.16,now);
+   const notes={
+    open:[[740,0,.09],[990,.11,.12]],
+    correct:[[523,0,.12],[659,.13,.12],[784,.27,.22]],
+    wrong:[[330,0,.16],[220,.17,.28]],
+    rebuzz:[[880,0,.09],[880,.17,.09]],
+    cancel:[[440,0,.08],[440,.12,.08]]
+   }[kind]||[[660,0,.12]];
+   let total=0;
+   for(const [freq,delay,dur] of notes){const o=ctx.createOscillator(),g=ctx.createGain();o.type=kind==="wrong"?"triangle":"sine";o.frequency.value=freq;o.connect(g);g.connect(master);g.gain.setValueAtTime(.8,now+delay);g.gain.exponentialRampToValueAtTime(.001,now+delay+dur);o.start(now+delay);o.stop(now+delay+dur+.02);total=Math.max(total,delay+dur)}
+   setTimeout(resolve,total*1000+60);
+  }catch{resolve()}
+ })
+}
+function synthSound(id){
+ return new Promise(resolve=>{try{
   audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
   const ctx=audioCtx, now=ctx.currentTime, master=ctx.createGain(); master.connect(ctx.destination); master.gain.setValueAtTime(.18,now);
   const profiles={8:[880,1320,.12,"square"],9:[1400,320,.22,"sawtooth"],10:[180,520,.28,"square"],11:[330,660,.18,"square"],12:[440,880,.3,"triangle"],13:[1200,900,.16,"sine"],14:[180,1500,.18,"sawtooth"],15:[180,520,.32,"sine"],16:[700,250,.08,"sine"],17:[1500,1100,.12,"square"],18:[900,1200,.3,"sine"],19:[660,1320,.38,"sine"],20:[420,780,.18,"sine"],21:[240,720,.32,"triangle"],22:[120,55,.3,"sawtooth"],23:[160,70,.18,"triangle"],24:[90,42,.45,"sine"],25:[520,780,.4,"sawtooth"],26:[660,990,.42,"triangle"],27:[1200,180,.3,"sawtooth"],28:[1100,1760,.38,"sine"],29:[880,220,.2,"square"],30:[392,784,.45,"triangle"]};
-  const [f1,f2,d,type]=profiles[id]||profiles[29], o=ctx.createOscillator(), g=ctx.createGain(); o.type=type;o.connect(g);g.connect(master);o.frequency.setValueAtTime(f1,now);o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),now+d);g.gain.setValueAtTime(.9,now);g.gain.exponentialRampToValueAtTime(.001,now+d);o.start(now);o.stop(now+d+.02);
- }catch{}
+  const [f1,f2,d,type]=profiles[id]||profiles[29], o=ctx.createOscillator(), g=ctx.createGain(); o.type=type;o.connect(g);g.connect(master);o.frequency.setValueAtTime(f1,now);o.frequency.exponentialRampToValueAtTime(Math.max(30,f2),now+d);g.gain.setValueAtTime(.9,now);g.gain.exponentialRampToValueAtTime(.001,now+d);o.start(now);o.stop(now+d+.02);setTimeout(resolve,d*1000+60);
+ }catch{resolve()}})
 }
-function beep(id=1){try{let n=Math.max(1,Math.min(30,+id||1));if(n>7)return synthSound(n);let a=audioCache.get(n);if(!a){a=new Audio(`sounds/Sound ${n}.mp3`);a.preload="auto";audioCache.set(n,a)}a.currentTime=0;a.play()?.catch(()=>{})}catch{}}
-function speak(name){try{speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(name+" menekan bel");u.lang="id-ID";u.rate=.9;speechSynthesis.speak(u)}catch{}}
+function playTeamBell(id=1){
+ return new Promise(resolve=>{try{let n=Math.max(1,Math.min(30,+id||1));if(n>7){synthSound(n).then(resolve);return}let a=audioCache.get(n);if(!a){a=new Audio(`sounds/Sound ${n}.mp3`);a.preload="auto";audioCache.set(n,a)}a.pause();a.currentTime=0;let done=false,finish=()=>{if(done)return;done=true;a.removeEventListener("ended",finish);a.removeEventListener("error",finish);resolve()};a.addEventListener("ended",finish,{once:true});a.addEventListener("error",finish,{once:true});let pr=a.play();if(pr?.catch)pr.catch(()=>finish());setTimeout(finish,1800)}catch{resolve()}})
+}
+function beep(id=1){enqueueAudio(()=>playTeamBell(id),{replace:true})}
+function speakText(text){
+ return new Promise(resolve=>{try{if(!("speechSynthesis" in window)){resolve();return}speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(text);u.lang="id-ID";u.rate=.92;u.pitch=1;u.volume=1;u.onend=resolve;u.onerror=resolve;speechSynthesis.speak(u);setTimeout(resolve,3500)}catch{resolve()}})
+}
+function announceWinner(t){enqueueAudio(async()=>{await playTeamBell(t.soundId);await sleep(140);await speakText(t.name)},{replace:true})}
+function announceFeedback(f){enqueueAudio(async()=>{await synthTone(f.ok?"correct":"wrong");await sleep(120);await speakText(f.ok?"Benar!":"Salah!")},{replace:true})}
+function announceRebuzz(){enqueueAudio(async()=>{await synthTone("rebuzz");await sleep(100);await speakText("Rebutan dibuka kembali.")})}
+function announceOpen(){enqueueAudio(()=>synthTone("open"),{replace:true})}
+function announceCancel(){enqueueAudio(()=>synthTone("cancel"),{replace:true})}
 function teams(){return Object.entries(roomData?.teams||{}).map(([id,t])=>({id,...t})).sort((a,b)=>(b.score||0)-(a.score||0)||String(a.name).localeCompare(String(b.name)))}
 function rounds(){return Object.entries(roomData?.rounds||{}).map(([id,r])=>({id,...r})).sort((a,b)=>a.number-b.number)}
 function winner(){return teams().find(t=>t.id===roomData?.buzzer?.winnerTeamId)}
@@ -60,7 +110,7 @@ async function init(){
  if(!configured){net("● PERLU FIREBASE");home();toast("Isi firebase-config.js terlebih dahulu.");return}
  try{fb=initializeApp(firebaseConfig);auth=getAuth(fb);db=getDatabase(fb);net("● AUTENTIKASI...");await setPersistence(auth,browserLocalPersistence);await signInAnonymously(auth);onAuthStateChanged(auth,u=>{user=u;if(u){net("● ONLINE");route()}})}catch(e){console.error(e);net("● ERROR");home();toast("Firebase belum tersambung: "+e.message)}
 }
-function watchRoom(){if(unsub)unsub();let oldWinner=null;unsub=onValue(ref(db,`rooms/${room}`),snap=>{let prev=oldWinner;roomData=snap.val();if(!roomData){toast("Room sudah tidak tersedia.");return home()}oldWinner=roomData.buzzer?.winnerTeamId||null;if(oldWinner&&oldWinner!==prev){let t=roomData.teams?.[oldWinner];if(t){beep(t.soundId);speak(t.name)}}render()})}
+function watchRoom(){if(unsub)unsub();let oldWinner=null,oldFeedbackAt=null,oldOpen=false;unsub=onValue(ref(db,`rooms/${room}`),snap=>{let prevWinner=oldWinner,prevFeedback=oldFeedbackAt,prevOpen=oldOpen;roomData=snap.val();if(!roomData){toast("Room sudah tidak tersedia.");return home()}oldWinner=roomData.buzzer?.winnerTeamId||null;oldFeedbackAt=roomData.feedback?.at||null;oldOpen=roomData.buzzer?.open===true;if((role==="host"||role==="display")&&oldWinner&&oldWinner!==prevWinner){let t=roomData.teams?.[oldWinner];if(t)announceWinner(t)}if((role==="host"||role==="display")&&oldFeedbackAt&&oldFeedbackAt!==prevFeedback)announceFeedback(roomData.feedback);if((role==="host"||role==="display")&&oldOpen&&!prevOpen&&!oldWinner)announceOpen();render()})}
 function route(){let p=new URLSearchParams(location.search),display=p.get("display"),join=p.get("room");if(display){role="display";room=display.toUpperCase();watchRoom();return}if(join){room=join.toUpperCase();role="player";checkRoom(true);return}let s=JSON.parse(localStorage.getItem("pq_team")||"null");if(s?.room&&s?.teamId){room=s.room;teamId=s.teamId;teamName=s.teamName||"";role="player";get(ref(db,`rooms/${room}/teams/${teamId}`)).then(x=>x.exists()?watchRoom():(clearSession(),home()));return}let h=JSON.parse(localStorage.getItem("pq_host")||"null");if(h?.room){room=h.room;get(ref(db,`rooms/${room}`)).then(x=>{if(x.exists()&&x.val().hostUid===user.uid){role="host";watchRoom()}else{localStorage.removeItem("pq_host");home()}});return}home()}
 function home(){if(unsub){unsub();unsub=null}clearToast();role=null;room=null;teamId=null;roomData=null;appEl.innerHTML=`<div class="wrap home-wrap"><section class="home-hero"><div class="home-copy"><div class="home-logo"><span>PQ</span><b>QuizBuzz</b></div><h1>Bel cerdas cermat.<br>Siapa cepat, dia menjawab.</h1><p>Buat room, kumpulkan tim, lalu mulai rebutan secara real-time.</p></div><div class="home-actions"><button id="make" class="home-action primary-action"><span class="line-icon">◉</span><span><b>Buat Permainan</b><small>Jadi host dan kendalikan pertandingan</small></span><i>→</i></button><button id="join" class="home-action join-action"><span class="line-icon users-icon">↪</span><span><b>Gabung Permainan</b><small>Masukkan kode room untuk ikut bermain</small></span><i>→</i></button></div></section></div>`;$("#make").onclick=makePage;$("#join").onclick=joinPage}
 function makePage(){if(!user)return toast("Menunggu Firebase...");appEl.innerHTML=`<div class="wrap"><section class="card"><h2>Buat Permainan</h2><div class="grid"><label>Maksimal tim<input id="max" type="number" min="2" max="50" value="5"></label><label>Nilai benar<input id="yes" type="number" value="10"></label><label>Nilai salah<input id="no" type="number" value="5"></label><label>Nama babak<input id="rn" value="Babak 1" maxlength="30"></label><label>Mode<select id="mode"><option value="classic">Classic</option><option value="nominus">No Minus</option><option value="elimination">Elimination</option><option value="final">Final Round ×2</option></select></label></div><div class="buttons"><button id="go">Buat Room</button><button id="back" class="secondary">Kembali</button></div></section></div>`;$("#go").onclick=createRoom;$("#back").onclick=home}
@@ -138,8 +188,8 @@ function teamMedia(t,animate=false){return `<span class="animal-face">${esc(t?.a
 function board(big=false){let ts=teams();if(!ts.length)return `<div class="empty">Belum ada tim.</div>`;return `<div class="score-list">${ts.map((t,i)=>`<div class="score-row ${t.id===roomData.buzzer?.winnerTeamId?"winner":""}"><span class="rank">${i+1}</span><span class="avatar">${teamMedia(t)}</span><b>${esc(t.name)}</b><strong>${t.score||0}</strong></div>`).join("")}</div>`}
 async function countdown(){if(roomData.buzzer?.open||roomData.buzzer?.countdown)return;await update(ref(db,`rooms/${room}`),{feedback:null,"buzzer/open":false,"buzzer/winnerTeamId":null,"buzzer/countdown":3,"buzzer/blocked":{},"buzzer/question":(roomData.buzzer?.question||0)+1});let n=3;clearInterval(countTimer);countTimer=setInterval(async()=>{n--;if(n>0)await update(ref(db,`rooms/${room}/buzzer`),{countdown:n});else{clearInterval(countTimer);await update(ref(db,`rooms/${room}/buzzer`),{countdown:0,open:true,winnerTeamId:null,openedAt:serverTimestamp()})}},1000)}
 async function buzz(){let me=myTeam();if(!me||roomData.buzzer?.blocked?.[teamId])return;let now=Date.now(),opened=+roomData.buzzer?.openedAt||now,elapsed=Math.max(0,now-opened);let attemptKey=push(ref(db,`rooms/${room}/attempts/${roomData.buzzer?.question||0}`)).key;set(ref(db,`rooms/${room}/attempts/${roomData.buzzer?.question||0}/${attemptKey}`),{teamId,teamName:me.name,at:now,elapsed}).catch(()=>{});let b=ref(db,`rooms/${room}/buzzer`);let result=await runTransaction(b,current=>{if(!current||current.open!==true||current.winnerTeamId)return;return {...current,open:false,winnerTeamId:teamId,winnerUid:user.uid,wonAt:now,winnerElapsed:elapsed}});if(!result.committed)toast("Bel sudah diambil tim lain.");else {let n=(myTeam()?.stats?.buzzes||0)+1;update(ref(db,`rooms/${room}/teams/${teamId}/stats`),{buzzes:n}).catch(()=>{})}}
-async function judge(ok,rebuzz=false){let w=winner();if(!w)return;let mult=roomData.round.mode==="final"?2:1;let pts=ok?roomData.round.correct*mult:(roomData.round.mode==="nominus"?0:-roomData.round.wrong*mult);let histKey=push(ref(db,`rooms/${room}/history`)).key;let before=w.score||0,after=before+pts;let patch={};patch[`teams/${w.id}/score`]=after;patch[`teams/${w.id}/stats/${ok?"correct":"wrong"}`]=(w.stats?.[ok?"correct":"wrong"]||0)+1;patch[`history/${histKey}`]={type:"judge",teamId:w.id,teamName:w.name,ok,points:pts,before,after,round:roomData.round.number,question:roomData.buzzer.question,at:Date.now()};patch[`lastAction`]={historyKey:histKey,teamId:w.id,before,after,at:Date.now()};patch[`feedback`]={teamId:w.id,teamName:w.name,avatar:w.avatar||"🦁",ok,points:pts,at:Date.now()};patch[`buzzer/winnerTeamId`]=null;patch[`buzzer/open`]=rebuzz;patch[`buzzer/countdown`]=0;if(rebuzz&&!ok)patch[`buzzer/blocked/${w.id}`]=true;else patch[`buzzer/blocked`]={};await update(ref(db,`rooms/${room}`),patch)}
-async function cancelBuzz(){let w=winner();if(!w)return toast("Belum ada buzz yang bisa dibatalkan.");let hk=push(ref(db,`rooms/${room}/history`)).key;let patch={};patch[`history/${hk}`]={type:"cancel_buzz",teamId:w.id,teamName:w.name,round:roomData.round.number,question:roomData.buzzer.question,at:Date.now()};patch[`buzzer/winnerTeamId`]=null;patch[`buzzer/winnerUid`]=null;patch[`buzzer/wonAt`]=null;patch[`buzzer/open`]=true;await update(ref(db,`rooms/${room}`),patch);toast("Buzz dibatalkan. Bel dibuka kembali tanpa perubahan skor.")}
+async function judge(ok,rebuzz=false){let w=winner();if(!w)return;let mult=roomData.round.mode==="final"?2:1;let pts=ok?roomData.round.correct*mult:(roomData.round.mode==="nominus"?0:-roomData.round.wrong*mult);let histKey=push(ref(db,`rooms/${room}/history`)).key;let before=w.score||0,after=before+pts;let patch={};patch[`teams/${w.id}/score`]=after;patch[`teams/${w.id}/stats/${ok?"correct":"wrong"}`]=(w.stats?.[ok?"correct":"wrong"]||0)+1;patch[`history/${histKey}`]={type:"judge",teamId:w.id,teamName:w.name,ok,points:pts,before,after,round:roomData.round.number,question:roomData.buzzer.question,at:Date.now()};patch[`lastAction`]={historyKey:histKey,teamId:w.id,before,after,at:Date.now()};patch[`feedback`]={teamId:w.id,teamName:w.name,avatar:w.avatar||"🦁",ok,points:pts,at:Date.now()};patch[`buzzer/winnerTeamId`]=null;patch[`buzzer/open`]=rebuzz;patch[`buzzer/countdown`]=0;if(rebuzz&&!ok)patch[`buzzer/blocked/${w.id}`]=true;else patch[`buzzer/blocked`]={};await update(ref(db,`rooms/${room}`),patch);if(rebuzz&&!ok&&(role==="host"||role==="display"))setTimeout(announceRebuzz,900)}
+async function cancelBuzz(){let w=winner();if(!w)return toast("Belum ada buzz yang bisa dibatalkan.");let hk=push(ref(db,`rooms/${room}/history`)).key;let patch={};patch[`history/${hk}`]={type:"cancel_buzz",teamId:w.id,teamName:w.name,round:roomData.round.number,question:roomData.buzzer.question,at:Date.now()};patch[`buzzer/winnerTeamId`]=null;patch[`buzzer/winnerUid`]=null;patch[`buzzer/wonAt`]=null;patch[`buzzer/open`]=true;await update(ref(db,`rooms/${room}`),patch);announceCancel();toast("Buzz dibatalkan. Bel dibuka kembali tanpa perubahan skor.")}
 async function cancelQuestion(){let q=roomData.buzzer?.question||0;if(!q)return toast("Belum ada soal aktif.");let hk=push(ref(db,`rooms/${room}/history`)).key;let patch={};patch[`history/${hk}`]={type:"cancel_question",round:roomData.round.number,question:q,at:Date.now()};patch[`buzzer/open`]=false;patch[`buzzer/winnerTeamId`]=null;patch[`buzzer/winnerUid`]=null;patch[`buzzer/wonAt`]=null;patch[`buzzer/countdown`]=0;patch[`buzzer/blocked`]={};patch[`buzzer/cancelledQuestion`]=q;await update(ref(db,`rooms/${room}`),patch);toast(`Soal ${q} dibatalkan. Tidak ada skor yang berubah.`)}
 async function undo(){let a=roomData.lastAction;if(!a)return toast("Belum ada skor yang bisa di-undo.");let h=roomData.history?.[a.historyKey];if(!h)return toast("Riwayat undo tidak ditemukan.");let patch={};patch[`teams/${a.teamId}/score`]=a.before;patch[`history/${a.historyKey}/undone`]=true;patch[`lastAction`]=null;await update(ref(db,`rooms/${room}`),patch);toast("Skor terakhir dibatalkan.")}
 async function toggleLock(){await update(ref(db,`rooms/${room}`),{locked:!roomData.locked})}
