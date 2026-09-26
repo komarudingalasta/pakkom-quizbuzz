@@ -33,3 +33,10 @@ Upload isi folder ini ke GitHub Pages seperti versi sebelumnya.
 
 ## Catatan foto
 Foto asli tidak dikirim. Browser lebih dulu crop dan kompres foto menjadi avatar kecil. Ukuran string avatar dibatasi di aplikasi dan Database Rules agar tidak membebani Realtime Database.
+
+
+## V5.3.1 Mobile & Room Fix
+- Home responsive diperbaiki untuk HP portrait; tidak ada panel terpotong ke kanan.
+- Pembuatan room dilakukan bertahap (hostUid lalu data room) agar kompatibel dengan rules.
+- Error Firebase saat membuat room sekarang ditampilkan, tidak berhenti di “Membuat room…”.
+- Publish database.rules.json dari paket ini di Firebase Realtime Database > Rules.
