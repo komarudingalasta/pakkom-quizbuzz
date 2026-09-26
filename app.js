@@ -64,7 +64,44 @@ function watchRoom(){if(unsub)unsub();let oldWinner=null;unsub=onValue(ref(db,`r
 function route(){let p=new URLSearchParams(location.search),display=p.get("display"),join=p.get("room");if(display){role="display";room=display.toUpperCase();watchRoom();return}if(join){room=join.toUpperCase();role="player";checkRoom(true);return}let s=JSON.parse(localStorage.getItem("pq_team")||"null");if(s?.room&&s?.teamId){room=s.room;teamId=s.teamId;teamName=s.teamName||"";role="player";get(ref(db,`rooms/${room}/teams/${teamId}`)).then(x=>x.exists()?watchRoom():(clearSession(),home()));return}let h=JSON.parse(localStorage.getItem("pq_host")||"null");if(h?.room){room=h.room;get(ref(db,`rooms/${room}`)).then(x=>{if(x.exists()&&x.val().hostUid===user.uid){role="host";watchRoom()}else{localStorage.removeItem("pq_host");home()}});return}home()}
 function home(){if(unsub){unsub();unsub=null}clearToast();role=null;room=null;teamId=null;roomData=null;appEl.innerHTML=`<div class="wrap home-wrap"><section class="home-hero"><div class="home-copy"><div class="home-logo"><span>PQ</span><b>QuizBuzz</b></div><h1>Bel cerdas cermat.<br>Siapa cepat, dia menjawab.</h1><p>Buat room, kumpulkan tim, lalu mulai rebutan secara real-time.</p></div><div class="home-actions"><button id="make" class="home-action primary-action"><span class="line-icon">◉</span><span><b>Buat Permainan</b><small>Jadi host dan kendalikan pertandingan</small></span><i>→</i></button><button id="join" class="home-action join-action"><span class="line-icon users-icon">↪</span><span><b>Gabung Permainan</b><small>Masukkan kode room untuk ikut bermain</small></span><i>→</i></button></div></section></div>`;$("#make").onclick=makePage;$("#join").onclick=joinPage}
 function makePage(){if(!user)return toast("Menunggu Firebase...");appEl.innerHTML=`<div class="wrap"><section class="card"><h2>Buat Permainan</h2><div class="grid"><label>Maksimal tim<input id="max" type="number" min="2" max="50" value="5"></label><label>Nilai benar<input id="yes" type="number" value="10"></label><label>Nilai salah<input id="no" type="number" value="5"></label><label>Nama babak<input id="rn" value="Babak 1" maxlength="30"></label><label>Mode<select id="mode"><option value="classic">Classic</option><option value="nominus">No Minus</option><option value="elimination">Elimination</option><option value="final">Final Round ×2</option></select></label></div><div class="buttons"><button id="go">Buat Room</button><button id="back" class="secondary">Kembali</button></div></section></div>`;$("#go").onclick=createRoom;$("#back").onclick=home}
-async function createRoom(){net("● MEMBUAT ROOM...");let max=Math.max(2,Math.min(50,+$("#max").value||5)),yes=+$("#yes").value||10,no=+$("#no").value||5,name=$("#rn").value.trim()||"Babak 1",mode=$("#mode").value||"classic";for(let i=0;i<20;i++){let c=newCode(),r=ref(db,`rooms/${c}`),s=await get(r);if(s.exists())continue;let data={hostUid:user.uid,createdAt:Date.now(),maxTeams:max,locked:false,round:{number:1,name,correct:yes,wrong:no,mode},rounds:{r1:{number:1,name,correct:yes,wrong:no,mode}},buzzer:{open:false,winnerTeamId:null,countdown:0,question:0,blocked:{}},teams:{},history:{}};await set(r,data);room=c;role="host";storeHostSession();net("● ONLINE");watchRoom();return}toast("Gagal membuat kode room.")}
+async function createRoom(){
+  if(!user){ toast("Autentikasi belum siap. Tunggu sebentar lalu coba lagi."); net("● ONLINE"); return; }
+  const btn=$("#go");
+  if(btn){btn.disabled=true;btn.textContent="Membuat room…"}
+  net("● MEMBUAT ROOM...");
+  const max=Math.max(2,Math.min(50,+$("#max").value||5));
+  const yes=+$("#yes").value||10, no=+$("#no").value||5;
+  const name=$("#rn").value.trim()||"Babak 1", mode=$("#mode").value||"classic";
+  try{
+    for(let i=0;i<20;i++){
+      const c=newCode(), roomRef=ref(db,`rooms/${c}`), snap=await get(roomRef);
+      if(snap.exists()) continue;
+      // Buat kepemilikan room terlebih dahulu. Cara bertahap ini kompatibel
+      // dengan rules lama maupun rules V5.3.1 dan menghindari parent-write denial.
+      await set(ref(db,`rooms/${c}/hostUid`),user.uid);
+      const writes=[
+        set(ref(db,`rooms/${c}/createdAt`),Date.now()),
+        set(ref(db,`rooms/${c}/maxTeams`),max),
+        set(ref(db,`rooms/${c}/locked`),false),
+        set(ref(db,`rooms/${c}/status`),"lobby"),
+        set(ref(db,`rooms/${c}/round`),{number:1,name,correct:yes,wrong:no,mode}),
+        set(ref(db,`rooms/${c}/rounds/r1`),{number:1,name,correct:yes,wrong:no,mode}),
+        set(ref(db,`rooms/${c}/buzzer`),{open:false,winnerTeamId:null,countdown:0,question:0,blocked:{}})
+      ];
+      await Promise.all(writes);
+      room=c; role="host"; storeHostSession(); net("● ONLINE"); watchRoom(); return;
+    }
+    throw new Error("Tidak berhasil mendapatkan kode room unik.");
+  }catch(e){
+    console.error("createRoom",e);
+    net("● ONLINE");
+    if(btn){btn.disabled=false;btn.textContent="Buat Room"}
+    const msg=(e?.code==="PERMISSION_DENIED"||/permission/i.test(e?.message||""))
+      ? "Room ditolak Firebase. Publish database.rules.json V5.3.1 di Realtime Database → Rules, lalu coba lagi."
+      : "Gagal membuat room: "+(e?.message||"koneksi bermasalah");
+    toast(msg);
+  }
+}
 function joinPage(){clearToast();appEl.innerHTML=`<div class="wrap narrow"><section class="card flow-card"><button id="back" class="icon-back" aria-label="Kembali">←</button><h2>Gabung Permainan</h2><p class="muted">Masukkan kode room dari guru.</p><label class="field-label">Kode Room<input id="code" class="room-input" maxlength="6" placeholder="8K4P2A" style="text-transform:uppercase"></label><button id="go" class="full primary-next">Lanjut →</button></section></div>`;$("#go").onclick=()=>{room=$("#code").value.trim().toUpperCase();checkRoom(false)};$("#back").onclick=home}
 async function checkRoom(fromLink=false){if(!/^[A-Z0-9]{6}$/.test(room||"")){if(fromLink)return home();return toast("Kode harus 6 karakter.")}let s=await get(ref(db,`rooms/${room}`));if(!s.exists())return toast("Room tidak ditemukan.");roomData=s.val();if(roomData.locked)return toast("Room sedang dikunci host.");role="player";loadDraft();teamPage()}
 function teamPage(){
