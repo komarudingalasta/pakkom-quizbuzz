@@ -22,3 +22,11 @@ Firebase rules tidak berubah dari V5.3.1.
 - Pemilihan voice Indonesia bila tersedia dan referensi utterance dipertahankan untuk Android.
 - Host kini menampilkan panel BENAR/SALAH yang jelas setelah penilaian.
 - Efek bel, benar, salah tetap berbeda dan seluruh audio tetap berurutan.
+
+## V5.5 — Cobalt + Coral
+- Brand tetap **PakKom QuizBuzz**.
+- Halaman Buat Room didesain ulang dengan palet cobalt + coral.
+- Nama Kompetisi sekarang wajib dan disimpan sebagai `rooms/{code}/title`.
+- Live preview nama kompetisi + nama babak sebelum room dibuat.
+- Judul kompetisi ikut tampil pada area host dan projector.
+- Audio/voice engine V5.4.1 tetap dipertahankan.
