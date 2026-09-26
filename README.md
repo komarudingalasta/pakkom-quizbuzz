@@ -30,3 +30,9 @@ Firebase rules tidak berubah dari V5.3.1.
 - Live preview nama kompetisi + nama babak sebelum room dibuat.
 - Judul kompetisi ikut tampil pada area host dan projector.
 - Audio/voice engine V5.4.1 tetap dipertahankan.
+
+## V5.5.1 — Full Cobalt + Coral Theme
+- Tema Cobalt + Coral kini diterapkan menyeluruh, bukan hanya halaman Buat Kompetisi.
+- Home, Join, Lobby, dashboard host, leaderboard, participant buzzer, projector, hasil, dan modal diselaraskan.
+- Branding home diperbaiki menjadi PakKom QuizBuzz.
+- Hijau/merah tetap khusus keputusan benar/salah.
