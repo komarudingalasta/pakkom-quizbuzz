@@ -36,3 +36,11 @@ Firebase rules tidak berubah dari V5.3.1.
 - Home, Join, Lobby, dashboard host, leaderboard, participant buzzer, projector, hasil, dan modal diselaraskan.
 - Branding home diperbaiki menjadi PakKom QuizBuzz.
 - Hijau/merah tetap khusus keputusan benar/salah.
+
+## V5.6 — Live Match Console
+- Dashboard host didesain ulang sebagai console pertandingan, tanpa sidebar admin.
+- Tiga fokus utama: Status Bel, Tim Tercepat + keputusan, dan Klasemen.
+- Daftar tim dan riwayat keputusan tampil langsung tanpa pindah halaman.
+- Kontrol bawah: Undo, Batalkan Buzz, Batalkan Soal, Ganti Babak, dan mode.
+- Alur buzzer/Firebase/audio V5.5.1 tetap dipertahankan.
+- Responsif untuk desktop/tablet/HP.
