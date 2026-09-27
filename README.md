@@ -51,3 +51,12 @@ Firebase rules tidak berubah dari V5.3.1.
 - Menghapus keterangan di bawah judul “Bel cerdas cermat. Siapa cepat, dia menjawab.”
 - Branding cukup satu kali pada header: PakKom QuizBuzz.
 - Fungsi pertandingan/Firebase V5.6 tidak diubah.
+
+## V5.7 — Start Console Home
+- Home rebuilt to match approved visual: Mulai QuizBuzz hero, trophy+buzzer CSS artwork, primary Buat Kompetisi CTA, inline room-code join, and compact tagline.
+- Removed old two-card Home structure and ambiguous symbol icons.
+- Uses consistent inline SVG icons; no emoji/action placeholder icons.
+- Existing Firebase, buzzer, host console, audio, and competition logic retained.
+
+## V5.8 Exact Home
+Home diselaraskan dengan visual final: piala polos tanpa bintang, tanpa ikon empat kotak pada kode room, proporsi hero/kartu/input disimetriskan.
