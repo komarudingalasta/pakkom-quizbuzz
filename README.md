@@ -44,3 +44,10 @@ Firebase rules tidak berubah dari V5.3.1.
 - Kontrol bawah: Undo, Batalkan Buzz, Batalkan Soal, Ganti Babak, dan mode.
 - Alur buzzer/Firebase/audio V5.5.1 tetap dipertahankan.
 - Responsif untuk desktop/tablet/HP.
+
+
+## V5.6.1 — Clean Home
+- Menghapus logo/nama PakKom QuizBuzz yang berulang di area hero Home.
+- Menghapus keterangan di bawah judul “Bel cerdas cermat. Siapa cepat, dia menjawab.”
+- Branding cukup satu kali pada header: PakKom QuizBuzz.
+- Fungsi pertandingan/Firebase V5.6 tidak diubah.
